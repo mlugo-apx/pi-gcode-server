@@ -30,6 +30,41 @@ for var in "${REQUIRED_VARS[@]}"; do
     fi
 done
 
+# Validate config values to prevent injection attacks
+validate_config() {
+    # Port must be numeric
+    if ! [[ "$REMOTE_PORT" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: REMOTE_PORT must be numeric (got: $REMOTE_PORT)"
+        exit 1
+    fi
+
+    # Port must be in valid range
+    if [ "$REMOTE_PORT" -lt 1 ] || [ "$REMOTE_PORT" -gt 65535 ]; then
+        echo "ERROR: REMOTE_PORT must be between 1 and 65535 (got: $REMOTE_PORT)"
+        exit 1
+    fi
+
+    # Host must not contain shell metacharacters
+    if [[ "$REMOTE_HOST" =~ [\$\`\;\|\&\<\>\(\)\{\}] ]]; then
+        echo "ERROR: REMOTE_HOST contains invalid characters"
+        exit 1
+    fi
+
+    # User must not contain shell metacharacters
+    if [[ "$REMOTE_USER" =~ [\$\`\;\|\&\<\>\(\)\{\}] ]]; then
+        echo "ERROR: REMOTE_USER contains invalid characters"
+        exit 1
+    fi
+
+    # Path must not contain shell metacharacters (except /)
+    if [[ "$REMOTE_PATH" =~ [\$\`\;\|\&\<\>\(\)\{\}] ]]; then
+        echo "ERROR: REMOTE_PATH contains invalid characters"
+        exit 1
+    fi
+}
+
+validate_config
+
 # Function to log messages
 log_message() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
@@ -40,19 +75,19 @@ sync_file() {
     local file="$1"
     log_message "Syncing file: $file"
 
-    # Use rsync with SSH
-    if rsync -avz -e "ssh -p $REMOTE_PORT" "$file" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"; then
+    # Use rsync with SSH (all variables quoted for security)
+    if rsync -avz -e "ssh -p \"$REMOTE_PORT\" -o StrictHostKeyChecking=yes" "$file" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"; then
         log_message "Successfully synced: $(basename "$file")"
 
         # Trigger USB gadget refresh on the Pi
         log_message "Refreshing USB gadget..."
-        if ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "sudo /usr/local/bin/refresh_usb_gadget.sh" 2>&1 | tail -1 | tee -a "$LOG_FILE"; then
+        if ssh -p "$REMOTE_PORT" -o StrictHostKeyChecking=yes "${REMOTE_USER}@${REMOTE_HOST}" "sudo /usr/local/bin/refresh_usb_gadget.sh" 2>&1 | tail -1 | tee -a "$LOG_FILE"; then
             log_message "USB gadget refreshed - printer should see the new file"
+            return 0
         else
-            log_message "WARNING: USB gadget refresh may have failed"
+            log_message "ERROR: USB gadget refresh failed"
+            return 1
         fi
-
-        return 0
     else
         log_message "ERROR: Failed to sync: $file"
         return 1

@@ -9,6 +9,7 @@ import sys
 import time
 import subprocess
 import logging
+import threading
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -54,6 +55,34 @@ def load_config():
             print(f"ERROR: Required variable {key} is not set in {config_file}", file=sys.stderr)
             sys.exit(1)
 
+    # Validate config values to prevent injection attacks
+    import re
+
+    # Port must be numeric
+    if not config['REMOTE_PORT'].isdigit():
+        print(f"ERROR: REMOTE_PORT must be numeric (got: {config['REMOTE_PORT']})", file=sys.stderr)
+        sys.exit(1)
+
+    port = int(config['REMOTE_PORT'])
+    if port < 1 or port > 65535:
+        print(f"ERROR: REMOTE_PORT must be between 1 and 65535 (got: {port})", file=sys.stderr)
+        sys.exit(1)
+
+    # Host, user, and path must not contain dangerous characters
+    dangerous_chars = re.compile(r'[$`;\|&<>(){}]')
+
+    if dangerous_chars.search(config['REMOTE_HOST']):
+        print("ERROR: REMOTE_HOST contains invalid characters", file=sys.stderr)
+        sys.exit(1)
+
+    if dangerous_chars.search(config['REMOTE_USER']):
+        print("ERROR: REMOTE_USER contains invalid characters", file=sys.stderr)
+        sys.exit(1)
+
+    if dangerous_chars.search(config['REMOTE_PATH']):
+        print("ERROR: REMOTE_PATH contains invalid characters", file=sys.stderr)
+        sys.exit(1)
+
     return config
 
 # Load configuration
@@ -80,6 +109,7 @@ class GCodeHandler(FileSystemEventHandler):
 
     def __init__(self):
         self.syncing = set()  # Track files currently being synced
+        self.syncing_lock = threading.Lock()  # Prevent race conditions
 
     def on_created(self, event):
         """Called when a file is created"""
@@ -94,16 +124,19 @@ class GCodeHandler(FileSystemEventHandler):
     def on_modified(self, event):
         """Called when a file is modified (handles saves from some editors)"""
         if not event.is_directory and event.src_path.endswith('.gcode'):
-            # Only sync if not already syncing
-            if event.src_path not in self.syncing:
-                self.sync_file(event.src_path)
+            # Only sync if not already syncing (thread-safe check)
+            with self.syncing_lock:
+                if event.src_path not in self.syncing:
+                    self.sync_file(event.src_path)
 
     def sync_file(self, file_path):
         """Sync a file to the remote server"""
-        if file_path in self.syncing:
-            return
+        # Thread-safe check and add
+        with self.syncing_lock:
+            if file_path in self.syncing:
+                return
+            self.syncing.add(file_path)
 
-        self.syncing.add(file_path)
         try:
             # Wait a moment to ensure file is fully written
             time.sleep(1)
@@ -142,21 +175,20 @@ class GCodeHandler(FileSystemEventHandler):
         except Exception as e:
             logging.error(f"Unexpected error syncing {file_path}: {e}")
         finally:
-            self.syncing.discard(file_path)
+            with self.syncing_lock:
+                self.syncing.discard(file_path)
 
     def refresh_usb_gadget(self):
         """Trigger USB gadget refresh on the Pi"""
-        try:
-            ssh_cmd = [
-                "ssh",
-                "-p", REMOTE_PORT,
-                f"{REMOTE_USER}@{REMOTE_HOST}",
-                "sudo /usr/local/bin/refresh_usb_gadget.sh"
-            ]
-            subprocess.run(ssh_cmd, check=True, capture_output=True)
-            logging.info("USB gadget refreshed successfully")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Failed to refresh USB gadget: {e}")
+        ssh_cmd = [
+            "ssh",
+            "-p", REMOTE_PORT,
+            "-o", "StrictHostKeyChecking=yes",
+            f"{REMOTE_USER}@{REMOTE_HOST}",
+            "sudo /usr/local/bin/refresh_usb_gadget.sh"
+        ]
+        subprocess.run(ssh_cmd, check=True, capture_output=True)
+        logging.info("USB gadget refreshed successfully")
 
 
 def main():
