@@ -11,6 +11,7 @@ import subprocess
 import logging
 import threading
 from pathlib import Path
+from functools import wraps
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -27,6 +28,50 @@ USB_REFRESH_TIMEOUT = 30        # USB gadget refresh timeout (seconds)
 MAX_FILE_SIZE = 1024 * 1024 * 1024      # 1 GB (hard limit)
 WARN_FILE_SIZE = 500 * 1024 * 1024      # 500 MB (warn but allow)
 MIN_FILE_SIZE = 1                        # Reject empty files
+
+# Retry configuration for transient failures
+RETRY_MAX_ATTEMPTS = 3                   # Maximum retry attempts
+RETRY_INITIAL_DELAY = 2                  # Initial retry delay (seconds)
+RETRY_BACKOFF_MULTIPLIER = 2             # Exponential backoff multiplier
+
+def retry_on_failure(max_attempts=RETRY_MAX_ATTEMPTS, initial_delay=RETRY_INITIAL_DELAY,
+                     backoff_multiplier=RETRY_BACKOFF_MULTIPLIER):
+    """
+    Decorator to retry function on transient failures with exponential backoff.
+
+    Args:
+        max_attempts: Maximum number of retry attempts
+        initial_delay: Initial delay between retries (seconds)
+        backoff_multiplier: Multiplier for exponential backoff
+
+    Returns:
+        Decorated function that will retry on subprocess.CalledProcessError
+        or subprocess.TimeoutExpired
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            attempt = 1
+            delay = initial_delay
+
+            while attempt <= max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+                    if attempt == max_attempts:
+                        # Final attempt failed, re-raise
+                        raise
+
+                    # Log retry attempt
+                    logging.warning(f"Attempt {attempt}/{max_attempts} failed: {type(e).__name__}")
+                    logging.warning(f"Retrying in {delay}s...")
+
+                    time.sleep(delay)
+                    delay *= backoff_multiplier
+                    attempt += 1
+
+        return wrapper
+    return decorator
 
 def load_config():
     """Load configuration from config.local"""
@@ -299,14 +344,9 @@ class GCodeHandler(FileSystemEventHandler):
                 f"{REMOTE_USER}@{REMOTE_HOST}:{REMOTE_PATH}/"
             ]
 
+            # Execute rsync with retry logic (handles transient network failures)
             # Execute rsync immediately after re-validation (minimize TOCTOU window)
-            result = subprocess.run(
-                rsync_cmd,
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=timeout_seconds  # Dynamic timeout based on file size
-            )
+            result = self._execute_rsync_with_retry(rsync_cmd, timeout_seconds)
 
             logging.info(f"Successfully synced: {os.path.basename(abs_file_path)}")
 
@@ -323,6 +363,29 @@ class GCodeHandler(FileSystemEventHandler):
         finally:
             with self.syncing_lock:
                 self.syncing.discard(file_path)
+
+    @retry_on_failure()
+    def _execute_rsync_with_retry(self, rsync_cmd, timeout_seconds):
+        """Execute rsync command with retry logic for transient failures.
+
+        Args:
+            rsync_cmd: List of command arguments for rsync
+            timeout_seconds: Timeout in seconds for the operation
+
+        Returns:
+            subprocess.CompletedProcess: Result of the rsync operation
+
+        Raises:
+            subprocess.CalledProcessError: If rsync fails after all retries
+            subprocess.TimeoutExpired: If rsync times out after all retries
+        """
+        return subprocess.run(
+            rsync_cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout_seconds
+        )
 
     def refresh_usb_gadget(self):
         """Trigger USB gadget refresh on the Pi.

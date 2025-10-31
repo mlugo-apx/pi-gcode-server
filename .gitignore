@@ -49,3 +49,7 @@ Thumbs.db
 # Local configuration (users should copy from .example)
 config.local
 .env.local
+
+# Deprecated scripts (kept for reference only)
+deprecated/*.py
+deprecated/*.sh

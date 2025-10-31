@@ -156,10 +156,22 @@ Desktop → inotify/watchdog → rsync → Raspberry Pi → USB gadget → 3D Pr
 ```
 pi-gcode-server/
 ├── monitor_and_sync.sh          # Bash file monitor (simple)
-├── monitor_and_sync.py          # Python file monitor (recommended)
-├── gcode-monitor.service        # Systemd service file
+├── monitor_and_sync.py          # Python file monitor (recommended, security-hardened)
+├── gcode-monitor.service        # Systemd service file (sandboxed)
 ├── config.example               # Configuration template
+├── requirements.txt             # Python dependencies with SHA256 hashes
+├── .editorconfig                # Code style configuration
 ├── install_and_start.sh         # Automated installation script
+├── run_tests.sh                 # Test suite runner
+├── lib/                         # Shared libraries
+│   └── error_handler.sh         # Centralized error handling for shell scripts
+├── tests/                       # Test suite
+│   ├── unit/                    # Unit tests
+│   │   └── test_validation.py   # Validation logic tests
+│   ├── security/                # Security tests
+│   │   └── test_security.py     # OWASP Top 10 vulnerability tests
+│   └── integration/             # Integration tests
+│       └── test_integration.py  # End-to-end workflow tests
 ├── pi_scripts/                  # Raspberry Pi server scripts
 │   ├── diagnose_usb_gadget.sh   # Diagnostic tool
 │   ├── refresh_usb_gadget.sh    # Universal USB refresh (auto-detects)
@@ -175,12 +187,107 @@ pi-gcode-server/
 
 ---
 
-## 🔒 Security Notes
+## 🔒 Security Architecture
 
-- This project uses **SSH key-based authentication** (passwordless sudo for refresh script)
-- `config.local` is git-ignored to prevent accidentally committing sensitive info
-- All communication is encrypted via SSH
-- USB gadget operates on local network only (no internet exposure)
+This project implements **defense-in-depth** security with multiple layers of protection against common attacks.
+
+### Security Features
+
+#### 🛡️ Input Validation & Sanitization
+- **Path Traversal Prevention**: All file paths validated using Python `Path().resolve().relative_to()` to prevent `../` escapes
+- **Symlink Attack Prevention**: Files validated as regular files, symlinks rejected before processing
+- **Extension Validation**: Only `.gcode` files processed (case-sensitive)
+- **File Size Limits**:
+  - Minimum 1 byte (prevents empty file DoS)
+  - Maximum 1 GB (prevents disk exhaustion DoS)
+  - Warning threshold at 500 MB for large files
+
+#### 🔐 Command Injection Prevention
+- **Shell Variable Quoting**: All shell variables properly quoted in `monitor_and_sync.sh` and `test_sync.sh`
+- **No User-Controlled Commands**: File paths never used in shell execution contexts
+- **Error Handler Library**: Centralized error handling (`lib/error_handler.sh`) with strict mode (`set -euo pipefail`)
+
+#### ⏱️ TOCTOU Race Condition Mitigation
+- **Re-validation Before Use**: Files re-validated immediately before rsync execution
+- **Minimal TOCTOU Window**: <20 lines of code between validation and use
+- **Three-Layer Validation**:
+  1. Initial validation (extension, size, type)
+  2. Re-validation (symlink, file type, extension)
+  3. Execution (rsync with timeout)
+
+#### 🌐 Network Security
+- **Systemd Sandboxing**:
+  - `RestrictAddressFamilies=AF_INET AF_INET6` (network-only)
+  - `IPAddressAllow=192.168.1.0/24` (local subnet only)
+  - `IPAddressDeny=any` (deny by default)
+- **SSH Key Authentication**: Passwordless authentication required
+- **Encrypted Transport**: All data transfer over SSH
+- **Timeout Protection**: Network operations have configured timeouts
+
+#### 🔒 Filesystem Protection
+- **Systemd Restrictions**:
+  - `ProtectSystem=strict` (immutable system directories)
+  - `ProtectHome=tmpfs` (isolated home directory)
+  - `BindReadOnlyPaths` (read-only bind mounts)
+  - `NoNewPrivileges=true` (prevents privilege escalation)
+- **Path Bounds Checking**: Files must be within configured watch directory
+- **Forbidden Paths**: `/etc`, `/var`, `/usr`, `/bin`, `/sbin`, `/boot` blocked
+
+#### 🚫 System Call Filtering
+- **Systemd Syscall Filtering**:
+  - `SystemCallFilter=@system-service` (allowlist approach)
+  - `SystemCallFilter=~@privileged @resources @obsolete` (deny dangerous calls)
+  - `SystemCallArchitectures=native` (no foreign architectures)
+
+#### 🔄 Resilience & DoS Prevention
+- **Retry Logic**: Exponential backoff for transient failures (2s, 4s, 8s delays)
+- **Dynamic Timeouts**: Timeout scales with file size (baseline 2min + 1min per 100MB)
+- **Resource Limits**:
+  - `MemoryMax=500M` (memory limit)
+  - `CPUQuota=50%` (CPU throttling)
+  - `TasksMax=20` (process limit)
+
+#### 📦 Supply Chain Security
+- **Dependency Hashing**: `requirements.txt` includes SHA256 hashes
+- **Version Pinning**: All dependencies pinned to specific versions
+- **Minimal Dependencies**: Only `watchdog==3.0.0` for file monitoring
+
+### Attack Surface Reduction
+
+| Attack Vector | Mitigation | Layer |
+|---------------|-----------|-------|
+| Command Injection | Quoted variables, no shell execution | Input Validation |
+| Path Traversal | Bounds checking, relative_to() validation | Input Validation |
+| Symlink Attacks | islink() checks, realpath validation | Input Validation |
+| TOCTOU Races | Re-validation before use | Process |
+| File Size DoS | MIN/MAX size limits, dynamic timeouts | Resource Limits |
+| Network Attacks | Systemd IP restrictions, SSH encryption | Network |
+| Privilege Escalation | NoNewPrivileges, capability dropping | Systemd |
+| Syscall Exploits | SystemCallFilter allowlist | Systemd |
+
+### Testing
+
+Comprehensive test suite validates security controls:
+- **Unit Tests** (`tests/unit/`): Validation logic, retry behavior
+- **Security Tests** (`tests/security/`): OWASP Top 10, injection, traversal
+- **Integration Tests** (`tests/integration/`): End-to-end workflows
+
+Run tests with:
+```bash
+./run_tests.sh
+```
+
+### Security Considerations
+
+- **SSH Keys**: Store private keys with permissions `0600`, never commit to version control
+- **config.local**: Git-ignored to prevent credential exposure
+- **Log Files**: Do not log sensitive data (credentials, file contents)
+- **Network Isolation**: Run on trusted local network only (not internet-facing)
+- **Principle of Least Privilege**: Service runs as non-root user with minimal capabilities
+
+### Reporting Security Issues
+
+Please report security vulnerabilities privately via GitHub Security Advisories or email maintainers directly. Do not open public issues for security bugs.
 
 ---
 
