@@ -17,6 +17,8 @@ import threading
 import tempfile
 import unittest
 import shutil
+import textwrap
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -267,6 +269,10 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
     """Ensure rsync destination is safely quoted for remote paths."""
 
     def setUp(self):
+        self.filehandler_patch = patch("logging.FileHandler", return_value=logging.NullHandler())
+        self.filehandler_patch.start()
+        self.addCleanup(self.filehandler_patch.stop)
+
         self.module = importlib.import_module("monitor_and_sync")
         self.temp_dir = tempfile.mkdtemp()
         self.original_watch_dir = self.module.WATCH_DIR
@@ -310,6 +316,48 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
 
         self.assertIn("--protect-args", rsync_cmd)
         self.assertTrue(destination.endswith("--gcode/"))
+
+
+class TestLoggingSetup(unittest.TestCase):
+    """Ensure logging setup creates log directory before initializing FileHandler."""
+
+    def test_log_directory_precreated_for_filehandler(self):
+        repo_root = Path(__file__).resolve().parents[2]
+        config_path = repo_root / "config.local"
+        original_config = config_path.read_text(encoding="utf-8")
+
+        repo_root = Path(__file__).resolve().parents[2]
+        temp_root = repo_root / "tmp_log_tests" / uuid.uuid4().hex
+        log_dir = temp_root / "logs" / "nested"
+        log_file = log_dir / "monitor.log"
+
+        config_contents = textwrap.dedent(f"""\
+            WATCH_DIR="{Path.home()}/Desktop"
+            LOG_FILE="{log_file}"
+            REMOTE_USER="test"
+            REMOTE_HOST="localhost"
+            REMOTE_PORT="22"
+            REMOTE_PATH="/tmp"
+        """)
+
+        try:
+            config_path.write_text(config_contents, encoding="utf-8")
+            shutil.rmtree(log_dir, ignore_errors=True)
+            self.assertFalse(log_dir.exists(), "Precondition failed: log directory should not exist")
+
+            sys.modules.pop("monitor_and_sync", None)
+
+            def fake_filehandler(path, *args, **kwargs):
+                self.assertEqual(str(log_file), path)
+                self.assertTrue(Path(path).parent.exists(), "Log directory should exist before FileHandler initialization")
+                return logging.NullHandler()
+
+            with patch("logging.FileHandler", side_effect=fake_filehandler):
+                importlib.import_module("monitor_and_sync")
+        finally:
+            config_path.write_text(original_config, encoding="utf-8")
+            sys.modules.pop("monitor_and_sync", None)
+            shutil.rmtree(temp_root.parent, ignore_errors=True)
 
 
 if __name__ == '__main__':

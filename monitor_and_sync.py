@@ -212,6 +212,12 @@ REMOTE_PORT = config['REMOTE_PORT']
 REMOTE_PATH = config['REMOTE_PATH']
 LOG_FILE = config['LOG_FILE']
 
+# Ensure log directory exists with secure permissions before configuring logging
+log_path = Path(LOG_FILE)
+log_dir = log_path.parent
+if not log_dir.exists():
+    log_dir.mkdir(parents=True, mode=0o700, exist_ok=True)
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
