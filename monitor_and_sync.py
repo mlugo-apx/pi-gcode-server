@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import subprocess
+import shlex
 import logging
 import threading
 from pathlib import Path
@@ -328,11 +329,12 @@ class GCodeHandler(FileSystemEventHandler):
             # Build rsync command with timeouts
             rsync_cmd = [
                 "rsync",
+                "--protect-args",
                 "-avz",
                 f"--timeout={RSYNC_TIMEOUT}",
                 "-e", f"ssh -p {REMOTE_PORT} -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3",
                 abs_file_path,
-                f"{REMOTE_USER}@{REMOTE_HOST}:{REMOTE_PATH}/"
+                f"{REMOTE_USER}@{REMOTE_HOST}:{shlex.quote(REMOTE_PATH if REMOTE_PATH.endswith('/') else f'{REMOTE_PATH}/')}"
             ]
 
             # Execute rsync with retry logic (handles transient network failures)

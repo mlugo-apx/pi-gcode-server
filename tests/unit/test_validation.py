@@ -16,6 +16,7 @@ import logging
 import threading
 import tempfile
 import unittest
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -260,6 +261,55 @@ class TestHandlerDeadlock(unittest.TestCase):
             worker.join(timeout=0.5)
 
         self.assertFalse(worker.is_alive(), "on_created must not deadlock when calling sync_file")
+
+
+class TestRsyncDestinationQuoting(unittest.TestCase):
+    """Ensure rsync destination is safely quoted for remote paths."""
+
+    def setUp(self):
+        self.module = importlib.import_module("monitor_and_sync")
+        self.temp_dir = tempfile.mkdtemp()
+        self.original_watch_dir = self.module.WATCH_DIR
+        self.original_remote_path = self.module.REMOTE_PATH
+        self.module.WATCH_DIR = self.temp_dir
+
+        self.file_path = Path(self.temp_dir) / "quote_test.gcode"
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write("G1 X0 Y0\n")
+
+    def tearDown(self):
+        self.module.WATCH_DIR = self.original_watch_dir
+        self.module.REMOTE_PATH = self.original_remote_path
+        if self.file_path.exists():
+            self.file_path.unlink()
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _run_sync_and_get_command(self, remote_path):
+        self.module.REMOTE_PATH = remote_path
+        handler = self.module.GCodeHandler()
+
+        with patch.object(handler, "_execute_rsync_with_retry", return_value=None) as mock_rsync, \
+                patch.object(handler, "refresh_usb_gadget", return_value=True), \
+                patch("monitor_and_sync.time.sleep", return_value=None), \
+                patch("monitor_and_sync.os.path.islink", return_value=False):
+            handler.sync_file(str(self.file_path))
+
+        return mock_rsync.call_args[0][0]
+
+    def test_remote_path_with_space_is_quoted(self):
+        rsync_cmd = self._run_sync_and_get_command("/mnt/usb share")
+        destination = rsync_cmd[-1]
+
+        self.assertRegex(destination, r':["\']')
+        self.assertRegex(destination, r'["\']$')
+        self.assertIn("--protect-args", rsync_cmd)
+
+    def test_remote_path_leading_hyphen_uses_protect_args(self):
+        rsync_cmd = self._run_sync_and_get_command("--gcode")
+        destination = rsync_cmd[-1]
+
+        self.assertIn("--protect-args", rsync_cmd)
+        self.assertTrue(destination.endswith("--gcode/"))
 
 
 if __name__ == '__main__':
