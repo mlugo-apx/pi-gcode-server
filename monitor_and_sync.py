@@ -11,6 +11,7 @@ import subprocess
 import shlex
 import logging
 import threading
+import re
 from pathlib import Path
 from functools import wraps
 from watchdog.observers import Observer
@@ -34,6 +35,41 @@ MIN_FILE_SIZE = 1                        # Reject empty files
 RETRY_MAX_ATTEMPTS = 3                   # Maximum retry attempts
 RETRY_INITIAL_DELAY = 2                  # Initial retry delay (seconds)
 RETRY_BACKOFF_MULTIPLIER = 2             # Exponential backoff multiplier
+
+
+def parse_rsync_stats(stdout):
+    """Parse rsync --stats output into a dictionary of values."""
+    stats = {}
+
+    if not stdout:
+        return stats
+
+    patterns_int = {
+        "total_bytes_sent": r"Total bytes sent:\s*([\d,]+)",
+        "total_bytes_received": r"Total bytes received:\s*([\d,]+)",
+        "literal_data": r"Literal data:\s*([\d,]+)",
+        "matched_data": r"Matched data:\s*([\d,]+)",
+        "total_file_size": r"Total file size:\s*([\d,]+)",
+        "total_transferred_file_size": r"Total transferred file size:\s*([\d,]+)",
+    }
+
+    for key, pattern in patterns_int.items():
+        match = re.search(pattern, stdout, re.MULTILINE)
+        if match:
+            value = match.group(1).replace(',', '')
+            try:
+                stats[key] = int(value)
+            except ValueError:
+                logging.debug("Unable to parse integer for %s from %s", key, value)
+
+    speedup_match = re.search(r"speedup is\s+([\d.]+)", stdout)
+    if speedup_match:
+        try:
+            stats["speedup"] = float(speedup_match.group(1))
+        except ValueError:
+            logging.debug("Unable to parse speedup from %s", speedup_match.group(1))
+
+    return stats
 
 def retry_on_failure(max_attempts=RETRY_MAX_ATTEMPTS, initial_delay=RETRY_INITIAL_DELAY,
                      backoff_multiplier=RETRY_BACKOFF_MULTIPLIER):
@@ -337,6 +373,7 @@ class GCodeHandler(FileSystemEventHandler):
             # Build rsync command with timeouts
             rsync_cmd = [
                 "rsync",
+                "--stats",
                 "--protect-args",
                 "-avz",
                 f"--timeout={RSYNC_TIMEOUT}",
@@ -358,17 +395,35 @@ class GCodeHandler(FileSystemEventHandler):
             # Trigger USB gadget refresh
             usb_refresh_success = self.refresh_usb_gadget()
 
+            stats = parse_rsync_stats(getattr(result, "stdout", ""))
+            total_bytes_sent = stats.get("total_bytes_sent")
+            total_bytes_received = stats.get("total_bytes_received")
+            literal_data = stats.get("literal_data")
+            matched_data = stats.get("matched_data")
+            speedup_value = stats.get("speedup")
+
             refresh_status = "ok" if usb_refresh_success else "failed"
             rate_display = "inf" if transfer_rate == float('inf') else f"{transfer_rate:.2f}"
+            bytes_sent_display = total_bytes_sent if total_bytes_sent is not None else "n/a"
+            bytes_received_display = total_bytes_received if total_bytes_received is not None else "n/a"
+            literal_display = literal_data if literal_data is not None else "n/a"
+            matched_display = matched_data if matched_data is not None else "n/a"
+            speedup_display = f"{speedup_value:.2f}" if speedup_value is not None else "n/a"
 
             logging.info(
-                "Session summary: file=%s size=%.2f MB duration=%.2f s avg_rate=%s MB/s attempts=%d usb_refresh=%s",
+                "Session summary: file=%s size=%.2f MB duration=%.2f s avg_rate=%s MB/s "
+                "attempts=%d usb_refresh=%s bytes_sent=%s bytes_received=%s literal=%s matched=%s speedup=%s",
                 os.path.basename(abs_file_path),
                 mb_size,
                 duration,
                 rate_display,
                 attempts_used,
-                refresh_status
+                refresh_status,
+                bytes_sent_display,
+                bytes_received_display,
+                literal_display,
+                matched_display,
+                speedup_display
             )
 
         except subprocess.TimeoutExpired:

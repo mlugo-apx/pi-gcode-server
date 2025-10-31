@@ -278,6 +278,17 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
         self.original_watch_dir = self.module.WATCH_DIR
         self.original_remote_path = self.module.REMOTE_PATH
         self.module.WATCH_DIR = self.temp_dir
+        self.stats_output = textwrap.dedent("""
+            Number of files: 1 (reg: 1)
+            Number of created files: 1 (reg: 1)
+            Total file size: 1024 bytes
+            Total transferred file size: 1024 bytes
+            Literal data: 1024 bytes
+            Matched data: 0 bytes
+            Total bytes sent: 600
+            Total bytes received: 120
+            total size is 1024  speedup is 1.71
+        """).strip()
 
         self.file_path = Path(self.temp_dir) / "quote_test.gcode"
         with open(self.file_path, "w", encoding="utf-8") as f:
@@ -294,7 +305,8 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
         self.module.REMOTE_PATH = remote_path
         handler = self.module.GCodeHandler()
 
-        with patch.object(handler, "_execute_rsync_with_retry", return_value=(None, 1)) as mock_rsync, \
+        with patch.object(handler, "_execute_rsync_with_retry",
+                          return_value=(SimpleNamespace(stdout=self.stats_output, returncode=0), 1)) as mock_rsync, \
                 patch.object(handler, "refresh_usb_gadget", return_value=True), \
                 patch("monitor_and_sync.time.sleep", return_value=None), \
                 patch("monitor_and_sync.os.path.islink", return_value=False):
@@ -316,6 +328,28 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
 
         self.assertIn("--protect-args", rsync_cmd)
         self.assertTrue(destination.endswith("--gcode/"))
+
+    def test_session_summary_logs_stats(self):
+        handler = self.module.GCodeHandler()
+        file_path = str(self.file_path)
+
+        with patch.object(handler, "_execute_rsync_with_retry",
+                          return_value=(SimpleNamespace(stdout=self.stats_output, returncode=0), 2)), \
+                patch.object(handler, "refresh_usb_gadget", return_value=True), \
+                patch("monitor_and_sync.time.sleep", return_value=None), \
+                patch("monitor_and_sync.os.path.islink", return_value=False), \
+                patch("monitor_and_sync.logging.info") as mock_log_info:
+            handler.sync_file(file_path)
+
+        summary_calls = [call for call in mock_log_info.call_args_list if "Session summary" in call[0][0]]
+        self.assertTrue(summary_calls, "Expected session summary log entry")
+        summary_args = summary_calls[-1][0]
+        self.assertEqual(summary_args[5], 2)
+        self.assertEqual(summary_args[7], 600)
+        self.assertEqual(summary_args[8], 120)
+        self.assertEqual(summary_args[9], 1024)
+        self.assertEqual(summary_args[10], 0)
+        self.assertEqual(summary_args[11], "1.71")
 
 
 class TestLoggingSetup(unittest.TestCase):
