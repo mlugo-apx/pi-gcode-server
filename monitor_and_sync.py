@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """
 GCode File Monitor and Sync Script
-Monitors ~/Desktop for new .gcode files and syncs them to the Pi2W
+Monitors configured directory for new .gcode files and syncs them to the Pi
 """
 
 import os
@@ -13,15 +13,57 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-# Configuration
-WATCH_DIR = os.path.expanduser("~/Desktop")
-REMOTE_USER = "milugo"
-REMOTE_HOST = "192.168.1.6"
-REMOTE_PORT = "22"
-REMOTE_PATH = "/mnt/usb_share"
-LOG_FILE = os.path.expanduser("~/.gcode_sync.log")
+# Determine script directory
+SCRIPT_DIR = Path(__file__).parent.resolve()
 
-# Note: Changed from localhost:9702 to direct connection 192.168.1.6:22
+def load_config():
+    """Load configuration from config.local"""
+    config_file = SCRIPT_DIR / 'config.local'
+
+    if not config_file.exists():
+        print(f"ERROR: Configuration file not found: {config_file}", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Please run the setup wizard first:", file=sys.stderr)
+        print("  ./setup_wizard.sh", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Or manually create config.local from config.example:", file=sys.stderr)
+        print("  cp config.example config.local", file=sys.stderr)
+        print("  nano config.local", file=sys.stderr)
+        sys.exit(1)
+
+    config = {}
+    with open(config_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            # Skip comments and empty lines
+            if line.startswith('#') or not line or '=' not in line:
+                continue
+            # Parse KEY="VALUE" or KEY=VALUE
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            # Expand shell variables like $HOME
+            value = os.path.expandvars(value)
+            value = os.path.expanduser(value)
+            config[key] = value
+
+    # Validate required variables
+    required = ['WATCH_DIR', 'REMOTE_USER', 'REMOTE_HOST', 'REMOTE_PORT', 'REMOTE_PATH', 'LOG_FILE']
+    for key in required:
+        if key not in config:
+            print(f"ERROR: Required variable {key} is not set in {config_file}", file=sys.stderr)
+            sys.exit(1)
+
+    return config
+
+# Load configuration
+config = load_config()
+WATCH_DIR = config['WATCH_DIR']
+REMOTE_USER = config['REMOTE_USER']
+REMOTE_HOST = config['REMOTE_HOST']
+REMOTE_PORT = config['REMOTE_PORT']
+REMOTE_PATH = config['REMOTE_PATH']
+LOG_FILE = config['LOG_FILE']
 
 # Setup logging
 logging.basicConfig(

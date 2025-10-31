@@ -1,14 +1,34 @@
 #!/bin/bash
 
-# Configuration
-WATCH_DIR="$HOME/Desktop"
-REMOTE_USER="milugo"
-REMOTE_HOST="192.168.1.6"
-REMOTE_PORT="22"
-REMOTE_PATH="/mnt/usb_share"
-LOG_FILE="$HOME/.gcode_sync.log"
+# Determine script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Note: Changed from localhost:9702 to direct connection 192.168.1.6:22
+# Load configuration from config.local
+CONFIG_FILE="$SCRIPT_DIR/config.local"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "ERROR: Configuration file not found: $CONFIG_FILE"
+    echo
+    echo "Please run the setup wizard first:"
+    echo "  ./setup_wizard.sh"
+    echo
+    echo "Or manually create config.local from config.example:"
+    echo "  cp config.example config.local"
+    echo "  nano config.local"
+    exit 1
+fi
+
+# Source the configuration
+source "$CONFIG_FILE"
+
+# Validate required variables
+REQUIRED_VARS=("WATCH_DIR" "REMOTE_USER" "REMOTE_HOST" "REMOTE_PORT" "REMOTE_PATH" "LOG_FILE")
+for var in "${REQUIRED_VARS[@]}"; do
+    if [ -z "${!var}" ]; then
+        echo "ERROR: Required variable $var is not set in $CONFIG_FILE"
+        exit 1
+    fi
+done
 
 # Function to log messages
 log_message() {
