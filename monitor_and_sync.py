@@ -410,21 +410,22 @@ class GCodeHandler(FileSystemEventHandler):
             matched_display = matched_data if matched_data is not None else "n/a"
             speedup_display = f"{speedup_value:.2f}" if speedup_value is not None else "n/a"
 
-            logging.info(
-                "Session summary: file=%s size=%.2f MB duration=%.2f s avg_rate=%s MB/s "
-                "attempts=%d usb_refresh=%s bytes_sent=%s bytes_received=%s literal=%s matched=%s speedup=%s",
-                os.path.basename(abs_file_path),
-                mb_size,
-                duration,
-                rate_display,
-                attempts_used,
-                refresh_status,
-                bytes_sent_display,
-                bytes_received_display,
-                literal_display,
-                matched_display,
-                speedup_display
-            )
+            summary_block = "\n".join([
+                "==================== Sync Summary ====================",
+                f" File           : {os.path.basename(abs_file_path)}",
+                f" Size           : {mb_size:.2f} MB",
+                f" Duration       : {duration:.2f} s",
+                f" Average Rate   : {rate_display} MB/s",
+                f" Attempts       : {attempts_used}",
+                f" USB Refresh    : {refresh_status}",
+                f" Bytes Sent     : {bytes_sent_display}",
+                f" Bytes Received : {bytes_received_display}",
+                f" Literal Data   : {literal_display}",
+                f" Matched Data   : {matched_display}",
+                f" Speedup        : {speedup_display}",
+                "======================================================"
+            ])
+            logging.info(summary_block)
 
         except subprocess.TimeoutExpired:
             logging.error(f"Timeout syncing {file_path} - transfer took longer than 2 minutes")

@@ -341,15 +341,15 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
                 patch("monitor_and_sync.logging.info") as mock_log_info:
             handler.sync_file(file_path)
 
-        summary_calls = [call for call in mock_log_info.call_args_list if "Session summary" in call[0][0]]
+        summary_calls = [call for call in mock_log_info.call_args_list if "Sync Summary" in call[0][0]]
         self.assertTrue(summary_calls, "Expected session summary log entry")
-        summary_args = summary_calls[-1][0]
-        self.assertEqual(summary_args[5], 2)
-        self.assertEqual(summary_args[7], 600)
-        self.assertEqual(summary_args[8], 120)
-        self.assertEqual(summary_args[9], 1024)
-        self.assertEqual(summary_args[10], 0)
-        self.assertEqual(summary_args[11], "1.71")
+        summary_text = summary_calls[-1][0][0]
+        self.assertIn("Attempts       : 2", summary_text)
+        self.assertIn("Bytes Sent     : 600", summary_text)
+        self.assertIn("Bytes Received : 120", summary_text)
+        self.assertIn("Literal Data   : 1024", summary_text)
+        self.assertIn("Matched Data   : 0", summary_text)
+        self.assertIn("Speedup        : 1.71", summary_text)
 
 
 class TestLoggingSetup(unittest.TestCase):
