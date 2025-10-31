@@ -1,16 +1,36 @@
 [Unit]
 Description=GCode File Monitor and Sync Service
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=milugo
 WorkingDirectory=/home/milugo/Claude_Code/Send_To_Printer
 ExecStart=/home/milugo/Claude_Code/Send_To_Printer/monitor_and_sync.sh
+
+# Restart policy
 Restart=on-failure
 RestartSec=10
+StartLimitBurst=5
+StartLimitIntervalSec=600
+
+# Resource limits
+MemoryMax=500M
+CPUQuota=50%
+TasksMax=50
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/milugo/.gcode_sync.log
+
+# Logging
 StandardOutput=journal
 StandardError=journal
+SyslogIdentifier=gcode-monitor
 
 [Install]
 WantedBy=multi-user.target

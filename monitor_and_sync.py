@@ -147,11 +147,35 @@ class GCodeHandler(FileSystemEventHandler):
             # Wait a moment to ensure file is fully written
             time.sleep(1)
 
-            if not os.path.exists(file_path):
+            # Security: Validate file path is within watch directory
+            abs_file_path = os.path.abspath(file_path)
+            abs_watch_dir = os.path.abspath(WATCH_DIR)
+
+            if not abs_file_path.startswith(abs_watch_dir + os.sep):
+                logging.error(f"Security: File outside watch directory: {file_path}")
+                logging.error(f"  File path: {abs_file_path}")
+                logging.error(f"  Watch dir: {abs_watch_dir}")
+                return
+
+            # Security: Check it's a regular file (not symlink, directory, device, etc.)
+            if not os.path.exists(abs_file_path):
                 logging.warning(f"File no longer exists: {file_path}")
                 return
 
-            logging.info(f"Syncing file: {file_path}")
+            if os.path.islink(abs_file_path):
+                logging.error(f"Security: Refusing to sync symlink: {file_path}")
+                return
+
+            if not os.path.isfile(abs_file_path):
+                logging.warning(f"Skipping non-regular file: {file_path}")
+                return
+
+            # Security: Validate file extension (defense in depth)
+            if not abs_file_path.endswith('.gcode'):
+                logging.warning(f"Skipping non-gcode file: {file_path}")
+                return
+
+            logging.info(f"Syncing file: {abs_file_path}")
 
             # Build rsync command with timeouts
             rsync_cmd = [
@@ -159,7 +183,7 @@ class GCodeHandler(FileSystemEventHandler):
                 "-avz",
                 "--timeout=60",
                 "-e", f"ssh -p {REMOTE_PORT} -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3",
-                file_path,
+                abs_file_path,
                 f"{REMOTE_USER}@{REMOTE_HOST}:{REMOTE_PATH}/"
             ]
 
@@ -172,7 +196,7 @@ class GCodeHandler(FileSystemEventHandler):
                 timeout=120  # 2 minute overall timeout
             )
 
-            logging.info(f"Successfully synced: {os.path.basename(file_path)}")
+            logging.info(f"Successfully synced: {os.path.basename(abs_file_path)}")
 
             # Trigger USB gadget refresh
             self.refresh_usb_gadget()

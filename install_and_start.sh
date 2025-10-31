@@ -10,6 +10,18 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Load configuration or use defaults
+CONFIG_FILE="$SCRIPT_DIR/config.local"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+    echo -e "${GREEN}Using configuration from config.local${NC}"
+else
+    echo -e "${YELLOW}⚠️  config.local not found, using defaults${NC}"
+    REMOTE_USER="milugo"
+    REMOTE_HOST="192.168.1.6"
+    REMOTE_PORT="22"
+fi
+
 echo -e "${GREEN}=== GCode Auto-Sync Installation ===${NC}"
 echo
 
@@ -26,11 +38,11 @@ fi
 echo
 
 # Step 2: Verify SSH connection
-echo -e "${YELLOW}Step 2: Testing SSH connection to Pi...${NC}"
-if ssh -o ConnectTimeout=5 milugo@192.168.1.6 "echo 'Connection successful'" &>/dev/null; then
+echo -e "${YELLOW}Step 2: Testing SSH connection to Pi at ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PORT}...${NC}"
+if ssh -p "$REMOTE_PORT" -o ConnectTimeout=5 "${REMOTE_USER}@${REMOTE_HOST}" "echo 'Connection successful'" &>/dev/null; then
     echo -e "${GREEN}✓ SSH connection works${NC}"
 else
-    echo -e "${RED}✗ Cannot connect to Pi at 192.168.1.6${NC}"
+    echo -e "${RED}✗ Cannot connect to Pi at ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PORT}${NC}"
     echo "Please check:"
     echo "  1. Pi is powered on"
     echo "  2. Pi is on the network"
