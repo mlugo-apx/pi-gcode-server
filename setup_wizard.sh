@@ -76,6 +76,35 @@ validate_directory() {
     return 0
 }
 
+# Function to validate SSH parameters
+validate_ssh_params() {
+    local user="$1"
+    local host="$2"
+    local port="$3"
+
+    # Validate port is numeric and in range
+    if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}✗ Port must be numeric${NC}"
+        return 1
+    fi
+    if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        echo -e "${RED}✗ Port must be between 1-65535${NC}"
+        return 1
+    fi
+
+    # Validate no dangerous characters in user/host
+    if [[ "$user" =~ [\$\`\;\|\&\<\>\(\)\{\}] ]]; then
+        echo -e "${RED}✗ Username contains invalid characters${NC}"
+        return 1
+    fi
+    if [[ "$host" =~ [\$\`\;\|\&\<\>\(\)\{\}] ]]; then
+        echo -e "${RED}✗ Hostname contains invalid characters${NC}"
+        return 1
+    fi
+
+    return 0
+}
+
 # Function to test SSH connection
 test_ssh_connection() {
     local user="$1"
@@ -129,8 +158,15 @@ prompt_with_default "Raspberry Pi hostname/IP" "192.168.1.100" REMOTE_HOST
 # Remote port
 prompt_with_default "SSH port" "22" REMOTE_PORT
 
-# Test SSH connection
+# Validate SSH parameters before testing connection
 echo
+if ! validate_ssh_params "$REMOTE_USER" "$REMOTE_HOST" "$REMOTE_PORT"; then
+    echo
+    echo -e "${RED}✗ Invalid SSH parameters. Please run the wizard again.${NC}"
+    exit 1
+fi
+
+# Test SSH connection
 if ! test_ssh_connection "$REMOTE_USER" "$REMOTE_HOST" "$REMOTE_PORT"; then
     echo
     read -p "Continue anyway? (y/N): " -n 1 -r

@@ -114,12 +114,18 @@ class GCodeHandler(FileSystemEventHandler):
     def on_created(self, event):
         """Called when a file is created"""
         if not event.is_directory and event.src_path.endswith('.gcode'):
-            self.sync_file(event.src_path)
+            # Thread-safe check before syncing
+            with self.syncing_lock:
+                if event.src_path not in self.syncing:
+                    self.sync_file(event.src_path)
 
     def on_moved(self, event):
         """Called when a file is moved into the directory"""
         if not event.is_directory and event.dest_path.endswith('.gcode'):
-            self.sync_file(event.dest_path)
+            # Thread-safe check before syncing
+            with self.syncing_lock:
+                if event.dest_path not in self.syncing:
+                    self.sync_file(event.dest_path)
 
     def on_modified(self, event):
         """Called when a file is modified (handles saves from some editors)"""
@@ -147,21 +153,23 @@ class GCodeHandler(FileSystemEventHandler):
 
             logging.info(f"Syncing file: {file_path}")
 
-            # Build rsync command
+            # Build rsync command with timeouts
             rsync_cmd = [
                 "rsync",
                 "-avz",
-                "-e", f"ssh -p {REMOTE_PORT}",
+                "--timeout=60",
+                "-e", f"ssh -p {REMOTE_PORT} -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3",
                 file_path,
                 f"{REMOTE_USER}@{REMOTE_HOST}:{REMOTE_PATH}/"
             ]
 
-            # Execute rsync
+            # Execute rsync with timeout
             result = subprocess.run(
                 rsync_cmd,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                timeout=120  # 2 minute overall timeout
             )
 
             logging.info(f"Successfully synced: {os.path.basename(file_path)}")
@@ -169,6 +177,8 @@ class GCodeHandler(FileSystemEventHandler):
             # Trigger USB gadget refresh
             self.refresh_usb_gadget()
 
+        except subprocess.TimeoutExpired:
+            logging.error(f"Timeout syncing {file_path} - transfer took longer than 2 minutes")
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to sync {file_path}: {e}")
             logging.error(f"STDERR: {e.stderr}")
@@ -179,16 +189,55 @@ class GCodeHandler(FileSystemEventHandler):
                 self.syncing.discard(file_path)
 
     def refresh_usb_gadget(self):
-        """Trigger USB gadget refresh on the Pi"""
+        """Trigger USB gadget refresh on the Pi.
+
+        Returns:
+            bool: True if refresh succeeded, False otherwise
+
+        Raises:
+            subprocess.CalledProcessError: If refresh fails critically
+        """
         ssh_cmd = [
             "ssh",
             "-p", REMOTE_PORT,
             "-o", "StrictHostKeyChecking=yes",
+            "-o", "ConnectTimeout=10",
+            "-o", "ServerAliveInterval=5",
+            "-o", "ServerAliveCountMax=3",
             f"{REMOTE_USER}@{REMOTE_HOST}",
             "sudo /usr/local/bin/refresh_usb_gadget.sh"
         ]
-        subprocess.run(ssh_cmd, check=True, capture_output=True)
-        logging.info("USB gadget refreshed successfully")
+
+        try:
+            result = subprocess.run(
+                ssh_cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            logging.info("USB gadget refreshed successfully")
+            if result.stdout:
+                logging.debug(f"Refresh output: {result.stdout.strip()}")
+            return True
+
+        except subprocess.TimeoutExpired:
+            logging.error("USB gadget refresh timed out after 30 seconds")
+            logging.warning("File was synced but printer may not see it until Pi reboot")
+            return False
+
+        except subprocess.CalledProcessError as e:
+            logging.error(f"USB gadget refresh failed with exit code {e.returncode}")
+            if e.stderr:
+                logging.error(f"Error details: {e.stderr.strip()}")
+            logging.warning("File was synced but printer may not see it until Pi reboot")
+            logging.info(f"To manually refresh: ssh {REMOTE_USER}@{REMOTE_HOST} 'sudo /usr/local/bin/refresh_usb_gadget.sh'")
+            return False
+
+        except Exception as e:
+            logging.error(f"Unexpected error during USB gadget refresh: {type(e).__name__}: {e}")
+            logging.warning("File was synced but printer may not see it")
+            return False
 
 
 def main():
@@ -198,7 +247,11 @@ def main():
         import watchdog
     except ImportError:
         logging.error("watchdog module not found. Installing...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "watchdog"], check=True)
+        req_file = SCRIPT_DIR / "requirements.txt"
+        if req_file.exists():
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], check=True)
+        else:
+            subprocess.run([sys.executable, "-m", "pip", "install", "watchdog==3.0.0"], check=True)
         logging.info("Please restart the script")
         sys.exit(1)
 

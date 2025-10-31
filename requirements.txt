@@ -1,0 +1,5 @@
+# Python dependencies for pi-gcode-server
+# Pin versions for reproducible builds
+
+# File system event monitoring
+watchdog==3.0.0

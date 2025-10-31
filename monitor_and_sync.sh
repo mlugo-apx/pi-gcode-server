@@ -75,13 +75,16 @@ sync_file() {
     local file="$1"
     log_message "Syncing file: $file"
 
-    # Use rsync with SSH (all variables quoted for security)
-    if rsync -avz -e "ssh -p \"$REMOTE_PORT\" -o StrictHostKeyChecking=yes" "$file" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"; then
+    # Use rsync with SSH (with timeouts to prevent hanging)
+    if rsync -avz --timeout=60 \
+        -e "ssh -p \"$REMOTE_PORT\" -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3" \
+        "$file" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"; then
         log_message "Successfully synced: $(basename "$file")"
 
         # Trigger USB gadget refresh on the Pi
         log_message "Refreshing USB gadget..."
-        if ssh -p "$REMOTE_PORT" -o StrictHostKeyChecking=yes "${REMOTE_USER}@${REMOTE_HOST}" "sudo /usr/local/bin/refresh_usb_gadget.sh" 2>&1 | tail -1 | tee -a "$LOG_FILE"; then
+        if ssh -p "$REMOTE_PORT" -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
+            "${REMOTE_USER}@${REMOTE_HOST}" "timeout 30 sudo /usr/local/bin/refresh_usb_gadget.sh" 2>&1 | tail -1 | tee -a "$LOG_FILE"; then
             log_message "USB gadget refreshed - printer should see the new file"
             return 0
         else
