@@ -1,5 +1,24 @@
 #!/bin/bash
-# Quick setup script for GCode auto-sync system
+# ⚠️ DEPRECATED - Use setup_wizard.sh instead ⚠️
+
+echo "================================================================="
+echo "  DEPRECATED: This script has been replaced by setup_wizard.sh"
+echo "================================================================="
+echo ""
+echo "Please use the improved setup wizard instead:"
+echo "  ./setup_wizard.sh"
+echo ""
+read -p "Run setup_wizard.sh now? [Y/n]: " run_wizard
+
+if [[ ! "$run_wizard" =~ ^[Nn]$ ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    exec "$SCRIPT_DIR/setup_wizard.sh"
+else
+    echo "Setup cancelled. Run ./setup_wizard.sh when ready."
+    exit 0
+fi
+
+# === DEPRECATED CODE BELOW - WILL NOT EXECUTE ===
 
 set -e
 

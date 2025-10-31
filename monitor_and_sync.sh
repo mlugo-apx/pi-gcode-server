@@ -76,9 +76,10 @@ sync_file() {
     log_message "Syncing file: $file"
 
     # Use rsync with SSH (with timeouts to prevent hanging)
+    # SECURITY: Quote all variables to prevent command injection
     if rsync -avz --timeout=60 \
         -e "ssh -p \"$REMOTE_PORT\" -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3" \
-        "$file" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"; then
+        "$file" "${REMOTE_USER}@${REMOTE_HOST}:\"${REMOTE_PATH}/\""; then
         log_message "Successfully synced: $(basename "$file")"
 
         # Trigger USB gadget refresh on the Pi

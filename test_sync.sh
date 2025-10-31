@@ -48,7 +48,8 @@ echo
 
 # Test manual sync
 echo -e "${YELLOW}Step 2: Testing manual rsync${NC}"
-if rsync -avz -e "ssh -p $REMOTE_PORT" "$TEST_FILE" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"; then
+# SECURITY: Quote REMOTE_PATH to prevent command injection
+if rsync -avz -e "ssh -p $REMOTE_PORT" "$TEST_FILE" "${REMOTE_USER}@${REMOTE_HOST}:\"${REMOTE_PATH}/\""; then
     echo -e "${GREEN}✓ File synced successfully${NC}"
 else
     echo -e "${RED}✗ Failed to sync file${NC}"
@@ -58,7 +59,8 @@ echo
 
 # Verify on Pi
 echo -e "${YELLOW}Step 3: Verifying file on Pi${NC}"
-if ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "test -f ${REMOTE_PATH}/$(basename "$TEST_FILE") && ls -lh ${REMOTE_PATH}/$(basename "$TEST_FILE")"; then
+# SECURITY: Quote REMOTE_PATH in remote command
+if ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "test -f \"${REMOTE_PATH}/$(basename "$TEST_FILE")\" && ls -lh \"${REMOTE_PATH}/$(basename "$TEST_FILE")\""; then
     echo -e "${GREEN}✓ File exists on Pi${NC}"
 else
     echo -e "${RED}✗ File not found on Pi${NC}"
@@ -79,7 +81,8 @@ echo
 # Cleanup
 echo -e "${YELLOW}Step 5: Cleaning up test files${NC}"
 rm "$TEST_FILE"
-ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "rm ${REMOTE_PATH}/$(basename "$TEST_FILE")"
+# SECURITY: Quote REMOTE_PATH in remote command
+ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "rm \"${REMOTE_PATH}/$(basename "$TEST_FILE")\""
 echo -e "${GREEN}✓ Cleanup complete${NC}"
 echo
 

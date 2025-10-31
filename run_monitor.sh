@@ -4,12 +4,25 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m'
+
+# Load configuration
+CONFIG_FILE="$SCRIPT_DIR/config.local"
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo -e "${RED}ERROR: Configuration file not found: $CONFIG_FILE${NC}"
+    echo
+    echo "Please run the setup wizard first:"
+    echo "  ./setup_wizard.sh"
+    exit 1
+fi
+
+source "$CONFIG_FILE"
 
 echo -e "${GREEN}=== GCode File Monitor ===${NC}"
 echo
-echo "This script will monitor ~/Desktop for .gcode files"
-echo "and automatically sync them to your Pi at 192.168.1.6"
+echo "This script will monitor $WATCH_DIR for .gcode files"
+echo "and automatically sync them to your Pi at ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PORT}"
 echo
 
 # Check if inotify-tools is installed
@@ -29,12 +42,12 @@ fi
 
 # Check SSH connection
 echo "Testing SSH connection to Pi..."
-if ! ssh -o ConnectTimeout=5 milugo@192.168.1.6 "echo 'Connected'" &>/dev/null; then
-    echo -e "${YELLOW}Warning: Could not connect to Pi at 192.168.1.6${NC}"
+if ! ssh -p "$REMOTE_PORT" -o ConnectTimeout=5 "${REMOTE_USER}@${REMOTE_HOST}" "echo 'Connected'" &>/dev/null; then
+    echo -e "${YELLOW}Warning: Could not connect to Pi at ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PORT}${NC}"
     echo "Please ensure:"
     echo "  1. The Pi is powered on and connected to the network"
     echo "  2. SSH keys are set up for passwordless login"
-    echo "  3. The Pi is accessible at 192.168.1.6"
+    echo "  3. The Pi is accessible at ${REMOTE_HOST}:${REMOTE_PORT}"
     echo
     read -p "Continue anyway? [y/N]: " continue_anyway
     if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
@@ -46,9 +59,9 @@ fi
 echo
 
 echo -e "${GREEN}Starting file monitor...${NC}"
-echo "Watching: ~/Desktop/*.gcode"
-echo "Target: milugo@192.168.1.6:/mnt/usb_share/"
-echo "Logs: ~/.gcode_sync.log"
+echo "Watching: ${WATCH_DIR}/*.gcode"
+echo "Target: ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PORT}:${REMOTE_PATH}/"
+echo "Logs: ${LOG_FILE}"
 echo
 echo "Press Ctrl+C to stop"
 echo

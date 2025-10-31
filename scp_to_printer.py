@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 """
-⚠️ DEPRECATED LEGACY SCRIPT ⚠️
+⚠️ DEPRECATED LEGACY SCRIPT - DO NOT USE ⚠️
 
-This script is DEPRECATED and should NOT be used in production.
+This script has been REMOVED and will not execute.
 Use monitor_and_sync.py instead, which has:
 - Proper configuration management (config.local)
 - Secure subprocess handling (no shell=True)
@@ -10,9 +10,28 @@ Use monitor_and_sync.py instead, which has:
 - Better error handling
 - Automatic file monitoring
 
-This script is kept only for reference/backwards compatibility.
+Migration instructions:
+1. Run: ./setup_wizard.sh
+2. Run: ./monitor_and_sync.py
 """
 import sys
+
+print("=" * 70, file=sys.stderr)
+print("ERROR: This script has been DEPRECATED and removed.", file=sys.stderr)
+print("=" * 70, file=sys.stderr)
+print("", file=sys.stderr)
+print("Please use monitor_and_sync.py instead:", file=sys.stderr)
+print("  1. Configure: ./setup_wizard.sh", file=sys.stderr)
+print("  2. Run monitor: ./monitor_and_sync.py", file=sys.stderr)
+print("  3. Or install as service:", file=sys.stderr)
+print("     sudo systemctl enable --now gcode-monitor.service", file=sys.stderr)
+print("", file=sys.stderr)
+print("For help, see: README.md", file=sys.stderr)
+print("=" * 70, file=sys.stderr)
+sys.exit(1)
+
+# === DEPRECATED CODE BELOW - WILL NOT EXECUTE ===
+
 import subprocess
 import shlex
 import glob

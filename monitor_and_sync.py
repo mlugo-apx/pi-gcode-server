@@ -83,6 +83,67 @@ def load_config():
         print("ERROR: REMOTE_PATH contains invalid characters", file=sys.stderr)
         sys.exit(1)
 
+    # Validate WATCH_DIR and LOG_FILE paths (defense in depth)
+    from pathlib import Path
+
+    # Validate WATCH_DIR is absolute and within user home
+    try:
+        watch_dir = Path(config['WATCH_DIR']).resolve()
+    except Exception as e:
+        print(f"ERROR: Invalid WATCH_DIR path: {config['WATCH_DIR']}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    user_home = Path.home()
+
+    if not watch_dir.is_absolute():
+        print(f"ERROR: WATCH_DIR must be an absolute path (got: {config['WATCH_DIR']})", file=sys.stderr)
+        sys.exit(1)
+
+    # Ensure WATCH_DIR is within user's home directory
+    try:
+        watch_dir.relative_to(user_home)
+    except ValueError:
+        print(f"ERROR: WATCH_DIR must be within user home directory ({user_home})", file=sys.stderr)
+        print(f"  Got: {watch_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate LOG_FILE path
+    try:
+        log_file = Path(config['LOG_FILE']).resolve()
+    except Exception as e:
+        print(f"ERROR: Invalid LOG_FILE path: {config['LOG_FILE']}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Prevent writing to system directories
+    forbidden_paths = [Path('/etc'), Path('/var'), Path('/usr'), Path('/bin'), Path('/sbin'), Path('/boot')]
+
+    for forbidden in forbidden_paths:
+        try:
+            log_file.relative_to(forbidden)
+            print(f"ERROR: LOG_FILE cannot be in system directory ({forbidden})", file=sys.stderr)
+            print(f"  Got: {log_file}", file=sys.stderr)
+            sys.exit(1)
+        except ValueError:
+            pass  # Not in this forbidden path, continue checking
+
+    # LOG_FILE should be within user home for safety
+    try:
+        log_file.relative_to(user_home)
+    except ValueError:
+        print(f"ERROR: LOG_FILE must be within user home directory ({user_home})", file=sys.stderr)
+        print(f"  Got: {log_file}", file=sys.stderr)
+        sys.exit(1)
+
+    # Check for path traversal sequences
+    path_traversal = re.compile(r'\.\.')
+    if path_traversal.search(config['WATCH_DIR']):
+        print("ERROR: WATCH_DIR contains path traversal sequence (..)", file=sys.stderr)
+        sys.exit(1)
+
+    if path_traversal.search(config['LOG_FILE']):
+        print("ERROR: LOG_FILE contains path traversal sequence (..)", file=sys.stderr)
+        sys.exit(1)
+
     return config
 
 # Load configuration
@@ -177,6 +238,20 @@ class GCodeHandler(FileSystemEventHandler):
 
             logging.info(f"Syncing file: {abs_file_path}")
 
+            # SECURITY: Re-validate immediately before rsync to prevent TOCTOU race condition
+            # This closes the window where file could be replaced with symlink after validation
+            if os.path.islink(abs_file_path):
+                logging.error(f"Security: File became symlink after validation: {file_path}")
+                return
+
+            if not os.path.isfile(abs_file_path):
+                logging.error(f"Security: File changed type after validation: {file_path}")
+                return
+
+            if not abs_file_path.endswith('.gcode'):
+                logging.error(f"Security: File extension changed after validation: {file_path}")
+                return
+
             # Build rsync command with timeouts
             rsync_cmd = [
                 "rsync",
@@ -187,7 +262,7 @@ class GCodeHandler(FileSystemEventHandler):
                 f"{REMOTE_USER}@{REMOTE_HOST}:{REMOTE_PATH}/"
             ]
 
-            # Execute rsync with timeout
+            # Execute rsync immediately after re-validation (minimize TOCTOU window)
             result = subprocess.run(
                 rsync_cmd,
                 capture_output=True,
