@@ -19,21 +19,33 @@ if [ "$EUID" -ne 0 ]; then
     exec sudo bash "$0" "$@"
 fi
 
-# Step 1: Reload systemd configuration
-echo -e "${YELLOW}[1/3] Reloading systemd daemon...${NC}"
+# Step 1: Copy updated service file
+echo -e "${YELLOW}[1/4] Copying updated service file...${NC}"
+cp /home/milugo/Claude_Code/Send_To_Printer/gcode-monitor.service /etc/systemd/system/
+echo -e "${GREEN}✓ Service file updated${NC}"
+echo ""
+
+# Step 2: Reload systemd configuration
+echo -e "${YELLOW}[2/5] Reloading systemd daemon...${NC}"
 systemctl daemon-reload
 echo -e "${GREEN}✓ Systemd daemon reloaded${NC}"
 echo ""
 
-# Step 2: Restart service with new security hardening
-echo -e "${YELLOW}[2/3] Restarting gcode-monitor service...${NC}"
+# Step 3: Reset failure counter
+echo -e "${YELLOW}[3/5] Resetting service failure counter...${NC}"
+systemctl reset-failed gcode-monitor.service 2>/dev/null || true
+echo -e "${GREEN}✓ Failure counter reset${NC}"
+echo ""
+
+# Step 4: Restart service with new security hardening
+echo -e "${YELLOW}[4/5] Restarting gcode-monitor service...${NC}"
 systemctl restart gcode-monitor.service
 sleep 2
 echo -e "${GREEN}✓ Service restarted${NC}"
 echo ""
 
-# Step 3: Verify service status
-echo -e "${YELLOW}[3/3] Verifying service status...${NC}"
+# Step 5: Verify service status
+echo -e "${YELLOW}[5/5] Verifying service status...${NC}"
 if systemctl is-active --quiet gcode-monitor.service; then
     echo -e "${GREEN}✓ Service is running${NC}"
     echo ""

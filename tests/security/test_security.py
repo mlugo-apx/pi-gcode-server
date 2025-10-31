@@ -277,8 +277,8 @@ class TestSystemdSandboxing(unittest.TestCase):
 
         # Verify filesystem hardening
         self.assertIn('ProtectSystem=strict', content)
-        self.assertIn('ProtectHome=tmpfs', content)
-        self.assertIn('BindReadOnlyPaths', content)
+        self.assertIn('ProtectHome=read-only', content)
+        self.assertIn('ReadOnlyPaths', content)
         self.assertIn('ReadWritePaths', content)
 
     def test_capability_restrictions(self):

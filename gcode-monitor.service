@@ -2,18 +2,18 @@
 Description=GCode File Monitor and Sync Service
 After=network-online.target
 Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=600
 
 [Service]
 Type=simple
 User=milugo
 WorkingDirectory=/home/milugo/Claude_Code/Send_To_Printer
-ExecStart=/home/milugo/Claude_Code/Send_To_Printer/monitor_and_sync.sh
+ExecStart=/usr/bin/python3 /home/milugo/Claude_Code/Send_To_Printer/monitor_and_sync.py
 
 # Restart policy
 Restart=on-failure
 RestartSec=10
-StartLimitBurst=5
-StartLimitIntervalSec=600
 
 # Resource limits
 MemoryMax=500M
@@ -30,10 +30,11 @@ IPAddressAllow=192.168.1.0/24
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=tmpfs
-BindReadOnlyPaths=/home/milugo/Desktop
-BindReadOnlyPaths=/home/milugo/Claude_Code/Send_To_Printer
+ProtectHome=read-only
 ReadWritePaths=/home/milugo/.gcode_sync.log
+ReadWritePaths=/home/milugo/.local
+ReadOnlyPaths=/home/milugo/Desktop
+ReadOnlyPaths=/home/milugo/Claude_Code/Send_To_Printer
 
 # Additional security hardening
 PrivateDevices=true
