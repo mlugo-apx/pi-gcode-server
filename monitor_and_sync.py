@@ -17,6 +17,17 @@ from watchdog.events import FileSystemEventHandler
 # Determine script directory
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
+# Configuration constants
+FILE_SETTLE_DELAY = 1           # Seconds to wait for file write completion
+RSYNC_TIMEOUT = 60              # Rsync network timeout (seconds)
+RSYNC_TOTAL_TIMEOUT = 120       # Maximum time for entire rsync operation (2 minutes)
+USB_REFRESH_TIMEOUT = 30        # USB gadget refresh timeout (seconds)
+
+# File size limits (GCode files are typically 1-100 MB, rarely >500 MB)
+MAX_FILE_SIZE = 1024 * 1024 * 1024      # 1 GB (hard limit)
+WARN_FILE_SIZE = 500 * 1024 * 1024      # 500 MB (warn but allow)
+MIN_FILE_SIZE = 1                        # Reject empty files
+
 def load_config():
     """Load configuration from config.local"""
     config_file = SCRIPT_DIR / 'config.local'
@@ -206,7 +217,7 @@ class GCodeHandler(FileSystemEventHandler):
 
         try:
             # Wait a moment to ensure file is fully written
-            time.sleep(1)
+            time.sleep(FILE_SETTLE_DELAY)
 
             # Security: Validate file path is within watch directory
             abs_file_path = os.path.abspath(file_path)
@@ -236,7 +247,27 @@ class GCodeHandler(FileSystemEventHandler):
                 logging.warning(f"Skipping non-gcode file: {file_path}")
                 return
 
-            logging.info(f"Syncing file: {abs_file_path}")
+            # Validate file size to prevent DoS
+            try:
+                file_size = os.path.getsize(abs_file_path)
+            except OSError as e:
+                logging.error(f"Cannot determine file size: {file_path}: {e}")
+                return
+
+            if file_size < MIN_FILE_SIZE:
+                logging.warning(f"Skipping empty file: {file_path}")
+                return
+
+            if file_size > MAX_FILE_SIZE:
+                logging.error(f"File too large: {file_path} ({file_size / (1024*1024):.2f} MB)")
+                logging.error(f"Maximum allowed size: {MAX_FILE_SIZE / (1024*1024):.2f} MB")
+                return
+
+            if file_size > WARN_FILE_SIZE:
+                logging.warning(f"Large file detected: {file_path} ({file_size / (1024*1024):.2f} MB)")
+                logging.warning("This may take several minutes to sync")
+
+            logging.info(f"Syncing file: {abs_file_path} ({file_size / (1024*1024):.2f} MB)")
 
             # SECURITY: Re-validate immediately before rsync to prevent TOCTOU race condition
             # This closes the window where file could be replaced with symlink after validation
@@ -252,11 +283,17 @@ class GCodeHandler(FileSystemEventHandler):
                 logging.error(f"Security: File extension changed after validation: {file_path}")
                 return
 
+            # Calculate dynamic timeout based on file size
+            # Baseline: 2 minutes for small files, add 1 minute per 100 MB for large files
+            timeout_seconds = max(RSYNC_TOTAL_TIMEOUT, int((file_size / (100 * 1024 * 1024)) * 60))
+
+            logging.debug(f"Using timeout: {timeout_seconds}s for {file_size / (1024*1024):.2f} MB file")
+
             # Build rsync command with timeouts
             rsync_cmd = [
                 "rsync",
                 "-avz",
-                "--timeout=60",
+                f"--timeout={RSYNC_TIMEOUT}",
                 "-e", f"ssh -p {REMOTE_PORT} -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3",
                 abs_file_path,
                 f"{REMOTE_USER}@{REMOTE_HOST}:{REMOTE_PATH}/"
@@ -268,7 +305,7 @@ class GCodeHandler(FileSystemEventHandler):
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=120  # 2 minute overall timeout
+                timeout=timeout_seconds  # Dynamic timeout based on file size
             )
 
             logging.info(f"Successfully synced: {os.path.basename(abs_file_path)}")
@@ -313,7 +350,7 @@ class GCodeHandler(FileSystemEventHandler):
                 check=True,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=USB_REFRESH_TIMEOUT
             )
             logging.info("USB gadget refreshed successfully")
             if result.stdout:

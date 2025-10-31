@@ -18,14 +18,43 @@ StartLimitIntervalSec=600
 # Resource limits
 MemoryMax=500M
 CPUQuota=50%
-TasksMax=50
+TasksMax=20
 
-# Security hardening
+# Network hardening (restrict to local subnet only)
+RestrictAddressFamilies=AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=localhost
+IPAddressAllow=192.168.1.0/24
+
+# Filesystem protection (minimal access)
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=read-only
+ProtectHome=tmpfs
+BindReadOnlyPaths=/home/milugo/Desktop
+BindReadOnlyPaths=/home/milugo/Claude_Code/Send_To_Printer
 ReadWritePaths=/home/milugo/.gcode_sync.log
+
+# Additional security hardening
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ProtectKernelLogs=true
+ProtectClock=true
+
+# Capability restrictions
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# System call filtering
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+SystemCallArchitectures=native
 
 # Logging
 StandardOutput=journal
