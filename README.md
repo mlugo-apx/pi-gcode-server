@@ -81,6 +81,10 @@ tail -f ~/.gcode_sync.log
 > ℹ️  See [Pi Setup Guide](docs/PI_SETUP.md) for configuring the Raspberry Pi
 > USB gadget environment. The Linux desktop component is already hardened with
 > systemd sandboxing and security validation.
+>
+> 💡 Install [uv](https://github.com/astral-sh/uv) for faster, reproducible
+> Python dependency management (`curl -Ls https://astral.sh/uv/install.sh | sh`).
+> The installer will auto-detect and use `uv` when available.
 
 ### Windows (via WSL2)
 1. Enable WSL2 and install Ubuntu (`wsl --install` on Windows 11).
@@ -118,6 +122,10 @@ tail -f ~/.gcode_sync.log
 > 🔒 macOS uses FSEvents under the hood via `watchdog`, so the Python monitor
 > works natively. Replace systemd sandboxing with the appropriate `launchd`
 > options (as documented in the cross-platform guide).
+>
+> 💡 `uv` is also supported on macOS. Install it via Homebrew
+> (`brew install uv`) or the official installer; the setup script will pick it up
+> automatically.
 
 ---
 

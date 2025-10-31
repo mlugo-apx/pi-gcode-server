@@ -12,6 +12,7 @@ import shlex
 import logging
 import threading
 import re
+import shutil
 from pathlib import Path
 from functools import wraps
 from watchdog.observers import Observer
@@ -522,10 +523,19 @@ def main():
     except ImportError:
         logging.error("watchdog module not found. Installing...")
         req_file = SCRIPT_DIR / "requirements.txt"
-        if req_file.exists():
-            subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], check=True)
+        uv_exe = shutil.which("uv")
+        if uv_exe:
+            logging.info("Using uv to install Python dependencies")
+            if req_file.exists():
+                subprocess.run([uv_exe, "pip", "install", "-r", str(req_file)], check=True)
+            else:
+                subprocess.run([uv_exe, "pip", "install", "watchdog==3.0.0"], check=True)
         else:
-            subprocess.run([sys.executable, "-m", "pip", "install", "watchdog==3.0.0"], check=True)
+            logging.info("Using pip to install Python dependencies")
+            if req_file.exists():
+                subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], check=True)
+            else:
+                subprocess.run([sys.executable, "-m", "pip", "install", "watchdog==3.0.0"], check=True)
         logging.info("Please restart the script")
         sys.exit(1)
 

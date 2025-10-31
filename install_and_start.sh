@@ -38,7 +38,18 @@ fi
 echo
 
 # Step 2: Verify SSH connection
-echo -e "${YELLOW}Step 2: Testing SSH connection to Pi at ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PORT}...${NC}"
+echo -e "${YELLOW}Step 2: Installing Python dependencies...${NC}"
+if command -v uv &> /dev/null; then
+    echo "Using uv to install requirements..."
+    uv pip install --upgrade -r "$SCRIPT_DIR/requirements.txt"
+else
+    echo "Using pip to install requirements..."
+    python3 -m pip install --upgrade --user -r "$SCRIPT_DIR/requirements.txt"
+fi
+echo
+
+# Step 3: Verify SSH connection
+echo -e "${YELLOW}Step 3: Testing SSH connection to Pi at ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PORT}...${NC}"
 if ssh -p "$REMOTE_PORT" -o ConnectTimeout=5 "${REMOTE_USER}@${REMOTE_HOST}" "echo 'Connection successful'" &>/dev/null; then
     echo -e "${GREEN}✓ SSH connection works${NC}"
 else
@@ -51,8 +62,8 @@ else
 fi
 echo
 
-# Step 3: Quick test
-echo -e "${YELLOW}Step 3: Running quick test...${NC}"
+# Step 4: Quick test
+echo -e "${YELLOW}Step 4: Running quick test...${NC}"
 if "$SCRIPT_DIR/test_sync.sh"; then
     echo -e "${GREEN}✓ Test passed${NC}"
 else
@@ -61,8 +72,8 @@ else
 fi
 echo
 
-# Step 4: Install as systemd service
-echo -e "${YELLOW}Step 4: Install as systemd service?${NC}"
+# Step 5: Install as systemd service
+echo -e "${YELLOW}Step 5: Install as systemd service?${NC}"
 read -p "Install as systemd service (auto-start on boot)? [Y/n]: " install_service
 
 if [[ ! "$install_service" =~ ^[Nn]$ ]]; then
