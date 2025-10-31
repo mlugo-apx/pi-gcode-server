@@ -8,12 +8,17 @@ Tests the security-critical validation logic that prevents:
 - Invalid file types
 """
 
-import unittest
-import tempfile
+# noqa: D104
 import os
 import sys
+import importlib
+import logging
+import threading
+import tempfile
+import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from types import SimpleNamespace
+from unittest.mock import patch
 
 # Add parent directory to path to import monitor_and_sync
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -232,6 +237,29 @@ class TestConfigurationConstants(unittest.TestCase):
         self.assertGreater(MIN_FILE_SIZE, 0)
         self.assertGreater(MAX_FILE_SIZE, WARN_FILE_SIZE)
         self.assertGreater(WARN_FILE_SIZE, MIN_FILE_SIZE)
+
+
+class TestHandlerDeadlock(unittest.TestCase):
+    """Ensure file event handlers do not deadlock when invoking sync_file"""
+
+    def test_on_created_does_not_deadlock(self):
+        """on_created should return promptly without holding the lock"""
+        # Import here to ensure configuration is loaded as in production
+        sys.modules.pop("monitor_and_sync", None)
+        with patch("logging.FileHandler", return_value=logging.NullHandler()):
+            monitor_and_sync = importlib.import_module("monitor_and_sync")
+
+        handler = monitor_and_sync.GCodeHandler()
+        file_path = os.path.join(monitor_and_sync.WATCH_DIR, "deadlock_test.gcode")
+        event = SimpleNamespace(is_directory=False, src_path=file_path)
+
+        with patch("monitor_and_sync.time.sleep", return_value=None), \
+                patch("monitor_and_sync.os.path.exists", return_value=False):
+            worker = threading.Thread(target=handler.on_created, args=(event,), daemon=True)
+            worker.start()
+            worker.join(timeout=0.5)
+
+        self.assertFalse(worker.is_alive(), "on_created must not deadlock when calling sync_file")
 
 
 if __name__ == '__main__':

@@ -231,26 +231,17 @@ class GCodeHandler(FileSystemEventHandler):
     def on_created(self, event):
         """Called when a file is created"""
         if not event.is_directory and event.src_path.endswith('.gcode'):
-            # Thread-safe check before syncing
-            with self.syncing_lock:
-                if event.src_path not in self.syncing:
-                    self.sync_file(event.src_path)
+            self.sync_file(event.src_path)
 
     def on_moved(self, event):
         """Called when a file is moved into the directory"""
         if not event.is_directory and event.dest_path.endswith('.gcode'):
-            # Thread-safe check before syncing
-            with self.syncing_lock:
-                if event.dest_path not in self.syncing:
-                    self.sync_file(event.dest_path)
+            self.sync_file(event.dest_path)
 
     def on_modified(self, event):
         """Called when a file is modified (handles saves from some editors)"""
         if not event.is_directory and event.src_path.endswith('.gcode'):
-            # Only sync if not already syncing (thread-safe check)
-            with self.syncing_lock:
-                if event.src_path not in self.syncing:
-                    self.sync_file(event.src_path)
+            self.sync_file(event.src_path)
 
     def sync_file(self, file_path):
         """Sync a file to the remote server"""
