@@ -294,7 +294,7 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
         self.module.REMOTE_PATH = remote_path
         handler = self.module.GCodeHandler()
 
-        with patch.object(handler, "_execute_rsync_with_retry", return_value=None) as mock_rsync, \
+        with patch.object(handler, "_execute_rsync_with_retry", return_value=(None, 1)) as mock_rsync, \
                 patch.object(handler, "refresh_usb_gadget", return_value=True), \
                 patch("monitor_and_sync.time.sleep", return_value=None), \
                 patch("monitor_and_sync.os.path.islink", return_value=False):

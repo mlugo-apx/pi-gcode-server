@@ -47,7 +47,8 @@ def retry_on_failure(max_attempts=RETRY_MAX_ATTEMPTS, initial_delay=RETRY_INITIA
 
     Returns:
         Decorated function that will retry on subprocess.CalledProcessError
-        or subprocess.TimeoutExpired
+        or subprocess.TimeoutExpired. On success, returns a tuple of
+        (result, attempts_used).
     """
     def decorator(func):
         @wraps(func)
@@ -57,7 +58,8 @@ def retry_on_failure(max_attempts=RETRY_MAX_ATTEMPTS, initial_delay=RETRY_INITIA
 
             while attempt <= max_attempts:
                 try:
-                    return func(*args, **kwargs)
+                    result = func(*args, **kwargs)
+                    return result, attempt
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
                     if attempt == max_attempts:
                         # Final attempt failed, re-raise
@@ -345,12 +347,29 @@ class GCodeHandler(FileSystemEventHandler):
 
             # Execute rsync with retry logic (handles transient network failures)
             # Execute rsync immediately after re-validation (minimize TOCTOU window)
-            result = self._execute_rsync_with_retry(rsync_cmd, timeout_seconds)
+            sync_start = time.monotonic()
+            result, attempts_used = self._execute_rsync_with_retry(rsync_cmd, timeout_seconds)
+            duration = max(time.monotonic() - sync_start, 1e-6)
+            mb_size = file_size / (1024 * 1024)
+            transfer_rate = mb_size / duration if duration > 0 else float('inf')
 
             logging.info(f"Successfully synced: {os.path.basename(abs_file_path)}")
 
             # Trigger USB gadget refresh
-            self.refresh_usb_gadget()
+            usb_refresh_success = self.refresh_usb_gadget()
+
+            refresh_status = "ok" if usb_refresh_success else "failed"
+            rate_display = "inf" if transfer_rate == float('inf') else f"{transfer_rate:.2f}"
+
+            logging.info(
+                "Session summary: file=%s size=%.2f MB duration=%.2f s avg_rate=%s MB/s attempts=%d usb_refresh=%s",
+                os.path.basename(abs_file_path),
+                mb_size,
+                duration,
+                rate_display,
+                attempts_used,
+                refresh_status
+            )
 
         except subprocess.TimeoutExpired:
             logging.error(f"Timeout syncing {file_path} - transfer took longer than 2 minutes")
@@ -372,7 +391,8 @@ class GCodeHandler(FileSystemEventHandler):
             timeout_seconds: Timeout in seconds for the operation
 
         Returns:
-            subprocess.CompletedProcess: Result of the rsync operation
+            Tuple[subprocess.CompletedProcess, int]: Result of the rsync operation and
+            the attempt count (1-based) required for success.
 
         Raises:
             subprocess.CalledProcessError: If rsync fails after all retries
