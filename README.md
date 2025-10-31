@@ -59,54 +59,73 @@ Automatically monitor your desktop for `.gcode` files and wirelessly sync them t
 
 ## 🚀 Quick Start
 
-### 1. Clone Repository
+The project runs natively on Linux today. Windows and macOS users can follow the
+platform-specific guides below to get equivalent functionality.
+
+### Linux (native)
 ```bash
 git clone https://github.com/mlugo-apx/pi-gcode-server.git
 cd pi-gcode-server
-```
 
-### 2. Configure Your Setup
-```bash
-# Copy example config and customize
 cp config.example config.local
-nano config.local  # Edit with your Pi's IP, username, etc.
-```
+nano config.local  # Configure WATCH_DIR, REMOTE_* values
 
-### 3. Setup Raspberry Pi
-See [Pi Setup Guide](docs/PI_SETUP.md) for detailed instructions on:
-- Configuring USB gadget mode
-- Creating FAT32 backing storage
-- Installing refresh scripts
-- Optimizing network performance (CRITICAL!)
+./install_and_start.sh          # Installs dependencies, runs a sync test
+./deploy.sh                     # Installs/refreshes the systemd service
 
-### 4. Install Local Monitor
-```bash
-# Option A: Automated installation
-chmod +x install_and_start.sh
-./install_and_start.sh
-
-# Option B: Manual setup
-chmod +x monitor_and_sync.sh
-./monitor_and_sync.sh  # Test manually first
-```
-
-### 5. Enable as Service (Optional but Recommended)
-```bash
-sudo cp gcode-monitor.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable gcode-monitor.service
-sudo systemctl start gcode-monitor.service
-```
-
-### 6. Test It!
-```bash
-# Copy a test gcode file to your Desktop
-cp test.gcode ~/Desktop/
-
-# Check logs
+# Smoke test
+cp path/to/file.gcode ~/Desktop/
 tail -f ~/.gcode_sync.log
+```
 
-# Verify file reached the Pi
+> ℹ️  See [Pi Setup Guide](docs/PI_SETUP.md) for configuring the Raspberry Pi
+> USB gadget environment. The Linux desktop component is already hardened with
+> systemd sandboxing and security validation.
+
+### Windows (via WSL2)
+1. Enable WSL2 and install Ubuntu (`wsl --install` on Windows 11).
+2. Inside Ubuntu:
+   ```bash
+   git clone https://github.com/mlugo-apx/pi-gcode-server.git
+   cd pi-gcode-server
+   cp config.example config.local
+   ./install_and_start.sh
+   ./deploy.sh
+   ```
+3. Configure Windows to launch the monitor at login (e.g., PowerShell script
+   calling `wsl -d Ubuntu ./deploy.sh`).
+
+> 📄 Detailed instructions and bootstrap ideas live in
+> [Cross-Platform Support](docs/CROSS_PLATFORM_SUPPORT.md). The Raspberry Pi
+> still performs the USB gadget duties; WSL only runs the desktop monitor.
+
+### macOS (launchd)
+1. Install prerequisites via Homebrew:
+   ```bash
+   brew install python rsync openssh
+   ```
+2. Clone and configure the project:
+   ```bash
+   git clone https://github.com/mlugo-apx/pi-gcode-server.git
+   cd pi-gcode-server
+   cp config.example config.local
+   ./install_and_start.sh
+   ```
+3. Create a `launchd` plist (example template forthcoming in
+   `docs/CROSS_PLATFORM_SUPPORT.md`) that runs `monitor_and_sync.py` at login.
+4. Tail `~/.gcode_sync.log` to confirm end-to-end syncs.
+
+> 🔒 macOS uses FSEvents under the hood via `watchdog`, so the Python monitor
+> works natively. Replace systemd sandboxing with the appropriate `launchd`
+> options (as documented in the cross-platform guide).
+
+---
+
+Regardless of platform, the Raspberry Pi setup remains the same. After the Pi
+is prepared, confirm the desktop monitor reaches the Pi:
+```bash
+cp test.gcode ~/Desktop/
+tail -f ~/.gcode_sync.log
 ssh your_user@your_pi_ip "ls -lh /mnt/usb_share/"
 ```
 
