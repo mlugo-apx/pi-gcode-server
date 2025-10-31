@@ -1,0 +1,18 @@
+# Configuration for pi-gcode-server
+# Copy this file to 'config.local' and customize for your setup
+# Note: config.local is git-ignored for security
+
+# Local machine settings
+WATCH_DIR="$HOME/Desktop"          # Directory to monitor for .gcode files
+LOG_FILE="$HOME/.gcode_sync.log"   # Log file location
+
+# Raspberry Pi connection settings
+REMOTE_USER="your_pi_username"      # SSH username on your Raspberry Pi
+REMOTE_HOST="192.168.1.100"         # IP address or hostname of your Raspberry Pi
+REMOTE_PORT="22"                    # SSH port (default: 22)
+REMOTE_PATH="/mnt/usb_share"        # Path to USB gadget mount point on Pi
+
+# Example configurations:
+# Direct connection:      REMOTE_HOST="192.168.1.6" REMOTE_PORT="22"
+# SSH port forwarding:    REMOTE_HOST="localhost" REMOTE_PORT="9702"
+# Hostname:               REMOTE_HOST="raspberrypi.local" REMOTE_PORT="22"

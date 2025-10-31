@@ -1,0 +1,51 @@
+# Git Ignore for pi-gcode-server
+
+# Log files
+*.log
+.gcode_sync.log
+logs/
+
+# Backup files
+*.backup
+*.backup.*
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# Test gcode files
+*.gcode
+!example.gcode
+
+# SSH keys and sensitive configs
+id_rsa
+id_rsa.pub
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+Thumbs.db
+.DS_Store
+
+# Local configuration (users should copy from .example)
+config.local
+.env.local

@@ -1,0 +1,15 @@
+[Unit]
+Description=GCode File Monitor and Sync Service
+After=network.target
+
+[Service]
+Type=simple
+User=milugo
+ExecStart=/home/milugo/Claude_Code/Send_To_Printer/monitor_and_sync.sh
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
