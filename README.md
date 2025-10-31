@@ -323,6 +323,27 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## 🔍 Health Monitoring
+
+Use the bundled health check to verify the service and logs are fresh:
+
+```bash
+./check_gcode_monitor.sh
+```
+
+For periodic checks, add a cron entry (every 15 minutes shown):
+
+```cron
+*/15 * * * * /home/milugo/Claude_Code/Send_To_Printer/check_gcode_monitor.sh >> /home/milugo/Claude_Code/Send_To_Printer/logs/health_check.log 2>&1
+```
+
+The script validates:
+- `gcode-monitor.service` is active
+- `~/.gcode_sync.log` has been updated within the last 30 minutes
+- The systemd journal has no recent errors for the service
+
+---
+
 ## 🎯 Roadmap
 
 - [ ] Web interface for file management
