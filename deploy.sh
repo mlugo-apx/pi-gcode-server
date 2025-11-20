@@ -21,7 +21,7 @@ fi
 
 # Step 1: Copy updated service file
 echo -e "${YELLOW}[1/4] Copying updated service file...${NC}"
-cp /home/milugo/Claude_Code/Send_To_Printer/gcode-monitor.service /etc/systemd/system/
+cp /home/your_username/Claude_Code/Send_To_Printer/gcode-monitor.service /etc/systemd/system/
 echo -e "${GREEN}✓ Service file updated${NC}"
 echo ""
 

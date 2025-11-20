@@ -17,7 +17,7 @@ if [ -f "$CONFIG_FILE" ]; then
 else
     echo -e "${YELLOW}⚠️  config.local not found, using defaults${NC}"
     WATCH_DIR="$HOME/Desktop"
-    REMOTE_USER="milugo"
+    REMOTE_USER="your_username"
     REMOTE_HOST="192.168.1.6"
     REMOTE_PORT="22"
     REMOTE_PATH="/mnt/usb_share"

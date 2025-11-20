@@ -7,9 +7,9 @@ StartLimitIntervalSec=600
 
 [Service]
 Type=simple
-User=milugo
-WorkingDirectory=/home/milugo/Claude_Code/Send_To_Printer
-ExecStart=/usr/bin/python3 /home/milugo/Claude_Code/Send_To_Printer/monitor_and_sync.py
+User=your_username
+WorkingDirectory=/home/your_username/pi-gcode-server
+ExecStart=/usr/bin/python3 /home/your_username/pi-gcode-server/monitor_and_sync.py
 
 # Restart policy
 Restart=on-failure
@@ -31,10 +31,10 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/milugo/.gcode_sync.log
-ReadWritePaths=/home/milugo/.local
-ReadOnlyPaths=/home/milugo/Desktop
-ReadOnlyPaths=/home/milugo/Claude_Code/Send_To_Printer
+ReadWritePaths=/home/your_username/.gcode_sync.log
+ReadWritePaths=/home/your_username/.local
+ReadOnlyPaths=/home/your_username/Desktop
+ReadOnlyPaths=/home/your_username/pi-gcode-server
 
 # Additional security hardening
 PrivateDevices=true

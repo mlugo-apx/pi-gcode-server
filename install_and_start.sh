@@ -17,7 +17,7 @@ if [ -f "$CONFIG_FILE" ]; then
     echo -e "${GREEN}Using configuration from config.local${NC}"
 else
     echo -e "${YELLOW}⚠️  config.local not found, using defaults${NC}"
-    REMOTE_USER="milugo"
+    REMOTE_USER="your_username"
     REMOTE_HOST="192.168.1.6"
     REMOTE_PORT="22"
 fi

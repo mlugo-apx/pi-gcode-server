@@ -11,7 +11,7 @@
 | **Status** | ✅ Active (running) |
 | **Auto-start** | ✅ Enabled (starts on boot) |
 | **Watching** | `~/Desktop/*.gcode` |
-| **Target** | `milugo@192.168.1.6:/mnt/usb_share/` |
+| **Target** | `your_username@192.168.1.6:/mnt/usb_share/` |
 | **Service** | `gcode-monitor.service` |
 
 ### What Happens Now
@@ -85,7 +85,7 @@ tail -f ~/.gcode_sync.log
 
 **Pi refresh log** (on Pi):
 ```bash
-ssh milugo@192.168.1.6 "tail -f /var/log/usb_gadget_refresh.log"
+ssh your_username@192.168.1.6 "tail -f /var/log/usb_gadget_refresh.log"
 ```
 
 ### How It Survives Reboots
@@ -130,7 +130,7 @@ File appears on printer in seconds. No manual intervention needed!
 
 **Local (this PC):**
 - Service: `/etc/systemd/system/gcode-monitor.service`
-- Script: `/home/milugo/Claude_Code/Send_To_Printer/monitor_and_sync.sh`
+- Script: `/home/your_username/Claude_Code/Send_To_Printer/monitor_and_sync.sh`
 - Logs: `~/.gcode_sync.log`
 
 **Remote (Pi):**
@@ -157,12 +157,12 @@ systemctl is-active gcode-monitor.service
 tail -30 ~/.gcode_sync.log
 
 # Test SSH connection
-ssh milugo@192.168.1.6 echo "test"
+ssh your_username@192.168.1.6 echo "test"
 ```
 
 **Want to test without waiting for new files?**
 ```bash
-cd /home/milugo/Claude_Code/Send_To_Printer
+cd /home/your_username/Claude_Code/Send_To_Printer
 ./test_sync.sh
 ```
 
@@ -204,7 +204,7 @@ systemctl status gcode-monitor.service
 journalctl -u gcode-monitor.service -f
 
 # Test the system
-cd /home/milugo/Claude_Code/Send_To_Printer && ./test_sync.sh
+cd /home/your_username/Claude_Code/Send_To_Printer && ./test_sync.sh
 
 # Restart if needed
 sudo systemctl restart gcode-monitor.service

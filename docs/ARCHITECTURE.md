@@ -776,9 +776,9 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/milugo/.gcode_sync.log
-ReadOnlyPaths=/home/milugo/Desktop
-ReadOnlyPaths=/home/milugo/Claude_Code/Send_To_Printer
+ReadWritePaths=/home/your_username/.gcode_sync.log
+ReadOnlyPaths=/home/your_username/Desktop
+ReadOnlyPaths=/home/your_username/Claude_Code/Send_To_Printer
 ```
 
 **Effect**:
@@ -1269,9 +1269,9 @@ retry_command 3 2 2 rsync -avz /src /dest
 
 ## References
 
-- **Code**: `/home/milugo/Claude_Code/Send_To_Printer/`
-- **Tests**: `/home/milugo/Claude_Code/Send_To_Printer/tests/`
-- **Documentation**: `/home/milugo/Claude_Code/Send_To_Printer/docs/`
+- **Code**: `/home/your_username/Claude_Code/Send_To_Printer/`
+- **Tests**: `/home/your_username/Claude_Code/Send_To_Printer/tests/`
+- **Documentation**: `/home/your_username/Claude_Code/Send_To_Printer/docs/`
 - **GitHub**: https://github.com/mlugo-apx/pi-gcode-server
 
 ---

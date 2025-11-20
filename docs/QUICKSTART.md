@@ -3,7 +3,7 @@
 ## Automated Setup (Recommended)
 
 ```bash
-cd /home/milugo/Claude_Code/Send_To_Printer
+cd /home/your_username/Claude_Code/Send_To_Printer
 ./setup_wizard.sh
 ```
 
@@ -27,19 +27,19 @@ The wizard will guide you through:
 
 ### 1. Diagnose Your Pi Setup
 ```bash
-ssh -p 9702 milugo@localhost 'bash -s' < pi_scripts/diagnose_usb_gadget.sh > diagnostic.txt
+ssh -p 9702 your_username@localhost 'bash -s' < pi_scripts/diagnose_usb_gadget.sh > diagnostic.txt
 cat diagnostic.txt
 ```
 
 ### 2. Install Refresh Script on Pi
 ```bash
-scp -P 9702 pi_scripts/refresh_usb_gadget.sh milugo@localhost:/tmp/
-ssh -p 9702 milugo@localhost
+scp -P 9702 pi_scripts/refresh_usb_gadget.sh your_username@localhost:/tmp/
+ssh -p 9702 your_username@localhost
 sudo mv /tmp/refresh_usb_gadget.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/refresh_usb_gadget.sh
 
 # Add to sudoers
-echo "milugo ALL=(ALL) NOPASSWD: /usr/local/bin/refresh_usb_gadget.sh" | sudo tee /etc/sudoers.d/usb_gadget_refresh
+echo "your_username ALL=(ALL) NOPASSWD: /usr/local/bin/refresh_usb_gadget.sh" | sudo tee /etc/sudoers.d/usb_gadget_refresh
 sudo chmod 0440 /etc/sudoers.d/usb_gadget_refresh
 exit
 ```
@@ -112,19 +112,19 @@ journalctl -u gcode-monitor.service -f
 ### Manual Operations
 ```bash
 # Manually sync a file
-rsync -avz -e "ssh -p 9702" ~/Desktop/myprint.gcode milugo@localhost:/mnt/usb_share/
+rsync -avz -e "ssh -p 9702" ~/Desktop/myprint.gcode your_username@localhost:/mnt/usb_share/
 
 # Manually refresh USB gadget
-ssh -p 9702 milugo@localhost "sudo /usr/local/bin/refresh_usb_gadget.sh"
+ssh -p 9702 your_username@localhost "sudo /usr/local/bin/refresh_usb_gadget.sh"
 
 # Check Pi logs
-ssh -p 9702 milugo@localhost "tail /var/log/usb_gadget_refresh.log"
+ssh -p 9702 your_username@localhost "tail /var/log/usb_gadget_refresh.log"
 ```
 
 ### Troubleshooting
 ```bash
 # Re-run diagnostic
-ssh -p 9702 milugo@localhost 'bash -s' < pi_scripts/diagnose_usb_gadget.sh
+ssh -p 9702 your_username@localhost 'bash -s' < pi_scripts/diagnose_usb_gadget.sh
 
 # Stop service
 sudo systemctl stop gcode-monitor.service
@@ -135,7 +135,7 @@ journalctl -u gcode-monitor.service -n 50
 
 ## Files Location
 
-- **Local monitor**: `/home/milugo/Claude_Code/Send_To_Printer/`
+- **Local monitor**: `/home/your_username/Claude_Code/Send_To_Printer/`
 - **Pi refresh script**: `/usr/local/bin/refresh_usb_gadget.sh`
 - **Local logs**: `~/.gcode_sync.log`
 - **Pi logs**: `/var/log/usb_gadget_refresh.log`
@@ -145,7 +145,7 @@ journalctl -u gcode-monitor.service -n 50
 Current setup uses SSH port forwarding:
 - **Host**: localhost
 - **Port**: 9702
-- **User**: milugo
+- **User**: your_username
 - **Destination**: /mnt/usb_share
 
 To change to direct connection (192.168.1.6), edit the REMOTE_HOST and REMOTE_PORT variables in the monitor scripts.

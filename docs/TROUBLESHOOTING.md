@@ -247,7 +247,7 @@ nano config.local
 
 # Use absolute path within home directory:
 WATCH_DIR="$HOME/Desktop"            # ✓ Valid
-WATCH_DIR="/home/milugo/Desktop"     # ✓ Valid
+WATCH_DIR="/home/your_username/Desktop"     # ✓ Valid
 WATCH_DIR="Desktop"                  # ✗ Invalid (relative path)
 WATCH_DIR="/tmp/gcode"               # ✗ Invalid (not in home)
 ```

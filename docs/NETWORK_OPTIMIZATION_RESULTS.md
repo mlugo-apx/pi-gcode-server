@@ -139,10 +139,10 @@ Check if optimizations are active:
 
 ```bash
 # Check power save status (should show "2 (disable)")
-ssh milugo@192.168.1.6 "nmcli connection show preconfigured | grep powersave"
+ssh your_username@192.168.1.6 "nmcli connection show preconfigured | grep powersave"
 
 # Check network buffers (should show 16777216)
-ssh milugo@192.168.1.6 "sysctl net.core.rmem_max net.core.wmem_max"
+ssh your_username@192.168.1.6 "sysctl net.core.rmem_max net.core.wmem_max"
 
 # Check SSH config (should show compression and ciphers)
 cat ~/.ssh/config
@@ -156,8 +156,8 @@ If you experience issues, here's how to revert:
 
 ### 1. Re-enable Power Management
 ```bash
-ssh milugo@192.168.1.6 "sudo nmcli connection modify preconfigured 802-11-wireless.powersave 0"
-ssh milugo@192.168.1.6 "sudo nmcli connection down preconfigured && sudo nmcli connection up preconfigured"
+ssh your_username@192.168.1.6 "sudo nmcli connection modify preconfigured 802-11-wireless.powersave 0"
+ssh your_username@192.168.1.6 "sudo nmcli connection down preconfigured && sudo nmcli connection up preconfigured"
 ```
 
 ### 2. Remove SSH Optimizations
@@ -168,8 +168,8 @@ rm ~/.ssh/config
 
 ### 3. Restore Default Network Buffers
 ```bash
-ssh milugo@192.168.1.6 "sudo cp /etc/sysctl.conf.backup.* /etc/sysctl.conf"
-ssh milugo@192.168.1.6 "sudo sysctl -p"
+ssh your_username@192.168.1.6 "sudo cp /etc/sysctl.conf.backup.* /etc/sysctl.conf"
+ssh your_username@192.168.1.6 "sudo sysctl -p"
 ```
 
 ---
@@ -226,7 +226,7 @@ To check if performance degrades in future:
 
 ```bash
 # Quick 10MB transfer test
-(time dd if=/dev/zero bs=1M count=10 2>/dev/null | ssh milugo@192.168.1.6 "cat > /dev/null") 2>&1 | grep real
+(time dd if=/dev/zero bs=1M count=10 2>/dev/null | ssh your_username@192.168.1.6 "cat > /dev/null") 2>&1 | grep real
 
 # Should complete in ~1 second
 # If it takes >5 seconds, something is wrong

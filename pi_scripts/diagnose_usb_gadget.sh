@@ -1,6 +1,6 @@
 #!/bin/bash
 # Diagnostic script to identify USB gadget configuration
-# Run this on the Pi2W: ssh milugo@localhost -p 9702 'bash -s' < diagnose_usb_gadget.sh
+# Run this on the Pi2W: ssh your_username@localhost -p 9702 'bash -s' < diagnose_usb_gadget.sh
 
 echo "=== USB Gadget Diagnostic Report ==="
 echo

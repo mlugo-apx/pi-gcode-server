@@ -2,7 +2,7 @@
 # Health check for gcode-monitor systemd service.
 # Usage: ./check_gcode_monitor.sh
 # Optional cron entry (runs every 15 minutes):
-# */15 * * * * /home/milugo/Claude_Code/Send_To_Printer/check_gcode_monitor.sh
+# */15 * * * * /home/your_username/Claude_Code/Send_To_Printer/check_gcode_monitor.sh
 
 set -euo pipefail
 
