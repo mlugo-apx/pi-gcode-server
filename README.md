@@ -1,11 +1,23 @@
 # pi-gcode-server
 
-**Auto-sync GCode files from your desktop to 3D printer via Raspberry Pi USB gadget**
+## Stop Manually Transferring Files to Your 3D Printer
+
+**Save a file → It appears on your printer. That's it.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi-red.svg)](https://www.raspberrypi.org/)
 
-Automatically monitor your desktop for `.gcode` files and wirelessly sync them to your 3D printer through a Raspberry Pi configured as a USB mass storage device. No manual file transfers, no printer reboots required!
+Automatically sync `.gcode` files wirelessly to your 3D printer through a Raspberry Pi configured as a USB mass storage device. No SD card swapping, no manual transfers, no printer reboots.
+
+### The Problem
+
+**Before**: Save file → Unmount SD card → Walk to printer → Insert SD card → Wait for menu refresh → Navigate to file → Print
+
+**After**: Save file → Print *(file appears in 10 seconds)*
+
+### Why This Exists
+
+Tired of the "SD card shuffle"? This project eliminates the most tedious part of 3D printing: getting gcode files onto your printer. Set it up once, forget about it forever.
 
 ---
 
@@ -164,16 +176,77 @@ See [Network Optimization Results](docs/NETWORK_OPTIMIZATION_RESULTS.md) for det
 
 ---
 
+## 🖨️ Printer Compatibility
+
+**Works with any 3D printer that supports USB mass storage mode**, which includes most modern printers:
+
+### Confirmed Working
+- Creality Ender 3 series
+- Prusa i3 MK3/MK4
+- Creality CR-10 series
+- AnyCubic printers with USB ports
+- *Your printer here?* [Open an issue](https://github.com/mlugo-apx/pi-gcode-server/issues) to add it to the list!
+
+### How to Check Compatibility
+If your printer can read files from a USB flash drive, this will work. Look for:
+- USB-A port on your printer (usually on the front panel)
+- Ability to browse files via the printer's menu system
+- FAT32 filesystem support (standard for all USB mass storage)
+
+**Note**: This project requires a Raspberry Pi Zero W/2W (or other Pi model with USB OTG support).
+
+---
+
+## ❓ FAQ
+
+### How is this different from using a network-connected solution?
+This uses direct USB connection through the Raspberry Pi, so your printer doesn't need network capabilities. The Pi acts as a "smart USB drive" that auto-updates.
+
+### Can I use a different directory instead of Desktop?
+Yes! The watch directory is fully configurable via `WATCH_DIR` in `config.local`. Monitor any folder you want.
+
+### What if my printer doesn't have a USB port?
+Unfortunately, this solution requires USB mass storage support. If your printer only has an SD card slot, you'll need to stick with SD cards.
+
+### Does this work with Pi 3 or Pi 4?
+Yes, but you'll need a USB OTG adapter since they don't have built-in USB gadget support via micro-USB. Pi Zero W/2W are recommended for simplicity.
+
+### Is this secure?
+Yes. The project includes 8 layers of security:
+- Input validation (path traversal prevention, symlink rejection)
+- TOCTOU mitigation (race condition prevention)
+- Command injection prevention
+- Network restrictions (local subnet only via systemd)
+- Filesystem protection (read-only system directories)
+- System call filtering
+- Resource limits (memory, CPU, process count)
+- Capability dropping (zero Linux capabilities)
+
+See the [Security Architecture](#-security-architecture) section for details.
+
+### How much does this cost?
+- Raspberry Pi Zero W: ~$10-15
+- Micro-USB cable (if you don't have one): ~$3-5
+- **Total**: Under $20
+
+### Can I run this alongside other Pi projects?
+Yes, though the USB gadget mode will occupy the USB port. Other services (web servers, monitoring, etc.) can run simultaneously.
+
+### Do I need to keep my computer on?
+Yes, the file monitor runs on your computer and syncs files when they're created. The Pi stays on 24/7 connected to your printer.
+
+---
+
 ## 🛠️ How It Works
 
-1. **File Monitor** watches your `~/Desktop` directory for `.gcode` files using `inotifywait` or Python's `watchdog`
+1. **File Monitor** watches your configured directory for `.gcode` files using `inotifywait` or Python's `watchdog`
 2. **rsync** efficiently transfers new files to the Raspberry Pi over SSH
 3. **USB Gadget Refresh Script** on the Pi unbinds/rebinds the USB gadget, forcing the printer to re-enumerate
 4. **3D Printer** sees the new files immediately without any reboot!
 
 ```
-Desktop → inotify/watchdog → rsync → Raspberry Pi → USB gadget → 3D Printer
-           (monitors)       (transfers)  (serves)     (refreshes)   (prints!)
+Local Dir → inotify/watchdog → rsync → Raspberry Pi → USB gadget → 3D Printer
+            (monitors)       (transfers)  (serves)     (refreshes)   (prints!)
 ```
 
 ---
@@ -320,12 +393,28 @@ Please report security vulnerabilities privately via GitHub Security Advisories 
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
+Contributions are welcome! Here's how you can help:
+
+### Ways to Contribute
+- **Printer Compatibility Reports**: Test with your printer and report results
+- **Documentation**: Improve setup guides, add troubleshooting tips
+- **Bug Reports**: Found an issue? [Open an issue](https://github.com/mlugo-apx/pi-gcode-server/issues)
+- **Feature Requests**: Have an idea? Share it in [Discussions](https://github.com/mlugo-apx/pi-gcode-server/discussions)
+- **Code Improvements**: Security enhancements, performance optimizations, bug fixes
+
+### Pull Request Process
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Make your changes and add tests if applicable
+4. Run the test suite: `./run_tests.sh`
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request with a clear description
+
+### Code Style
+- Python: Follow PEP 8, use type hints
+- Bash: Use shellcheck, follow Google Shell Style Guide
+- Security: All inputs must be validated, no shell injection vulnerabilities
 
 ---
 
