@@ -28,7 +28,7 @@ The system implements an event-driven architecture that watches for file system 
 
 ### Key Characteristics
 
-- **Distributed System**: Desktop monitor + Raspberry Pi USB gadget server
+- **Distributed System**: Local file monitor + Raspberry Pi USB gadget server
 - **Event-Driven**: Responds to file system events (no polling)
 - **Defense-in-Depth Security**: 8 layers of security controls
 - **Performance Optimized**: 21x speed improvement over baseline
@@ -39,8 +39,8 @@ The system implements an event-driven architecture that watches for file system 
 
 ```
 ┌──────────────┐    rsync/SSH    ┌──────────────┐    USB Cable    ┌──────────────┐
-│   Desktop    │ ──────────────> │ Raspberry Pi │ ──────────────> │  3D Printer  │
-│   Monitor    │   (encrypted)   │ USB Gadget   │  (mass storage) │              │
+│    Local     │ ──────────────> │ Raspberry Pi │ ──────────────> │  3D Printer  │
+│    Machine   │   (encrypted)   │ USB Gadget   │  (mass storage) │              │
 └──────────────┘                 └──────────────┘                 └──────────────┘
 ```
 
@@ -54,9 +54,9 @@ Reference: Architecture analysis report
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
-│                         DESKTOP (Linux/WSL/macOS)                         │
+│                      LOCAL MACHINE (Linux/WSL/macOS)                      │
 │                                                                           │
-│  [1] User saves .gcode file to ~/Desktop                                  │
+│  [1] User saves .gcode file to watched directory (configurable)           │
 │       │                                                                   │
 │       ▼                                                                   │
 │  [2] File System Event (inotify/FSEvents)                                 │
@@ -175,7 +175,7 @@ Reference: `monitor_and_sync.py`, `pi_scripts/refresh_usb_gadget*.sh`
 
 ## Component Details
 
-### 1. Desktop Monitor Layer
+### 1. Local File Monitor Layer
 
 #### File Monitor (Primary Component)
 
@@ -504,7 +504,7 @@ Reference: `docs/NETWORK_OPTIMIZATION_RESULTS.md:40-114`
 
 ### Critical Path: Normal File Transfer
 
-**Entry Point**: User saves `file.gcode` to `~/Desktop`
+**Entry Point**: User saves `file.gcode` to watched directory (configurable via `WATCH_DIR`)
 **Duration**: ~10 seconds (55 MB file at 5.5 MB/s)
 **Success Rate**: >99% (with retry logic)
 
@@ -577,7 +577,7 @@ Reference: `monitor_and_sync.py:292-440`
 
 ## Integration Points
 
-### 1. Desktop Monitor ↔ File System
+### 1. Local File Monitor ↔ File System
 
 **Interface**: OS kernel inotify API (Linux) or FSEvents (macOS)
 **Protocol**: Kernel events delivered to userspace
@@ -595,14 +595,14 @@ Reference: `monitor_and_sync.py:548-564`
 
 ---
 
-### 2. Desktop Monitor ↔ Raspberry Pi
+### 2. Local File Monitor ↔ Raspberry Pi
 
 **Interface**: SSH + rsync protocols
 **Protocol**: rsync over SSH (encrypted)
 **Port**: 22 (default, configurable)
 
 **Authentication**: SSH public key
-- Desktop: Private key (`~/.ssh/id_ed25519`)
+- Local machine: Private key (`~/.ssh/id_ed25519`)
 - Pi: Authorized keys (`~/.ssh/authorized_keys`)
 - No password required (passwordless authentication)
 
@@ -777,7 +777,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/home/your_username/.gcode_sync.log
-ReadOnlyPaths=/home/your_username/Desktop
+ReadOnlyPaths=/home/your_username/Desktop  # Example: adjust to match WATCH_DIR
 ReadOnlyPaths=/home/your_username/Claude_Code/Send_To_Printer
 ```
 
@@ -1156,7 +1156,7 @@ retry_command 3 2 2 rsync -avz /src /dest
 
 ## Technology Stack
 
-### Desktop Monitor
+### Local File Monitor
 
 **Language**: Python 3.6+
 **Dependencies**:
@@ -1241,7 +1241,7 @@ retry_command 3 2 2 rsync -avz /src /dest
 
 ### Resource Usage
 
-**Desktop Monitor**:
+**Local File Monitor**:
 - CPU: <5% idle, 25% during transfer
 - Memory: ~100 MB (watchdog overhead)
 - Disk I/O: Minimal (monitor only, doesn't read files)
