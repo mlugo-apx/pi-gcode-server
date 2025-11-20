@@ -371,15 +371,4 @@ The script validates:
 
 ---
 
-## 🎯 Roadmap
-
-- [ ] Web interface for file management
-- [ ] Support for multiple 3D printers
-- [ ] OctoPrint integration option
-- [ ] Windows/macOS support
-- [ ] Automatic WiFi channel optimization
-- [ ] Print queue management
-
----
-
 **Happy Printing!** 🖨️✨
