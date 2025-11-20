@@ -53,52 +53,52 @@ Reference: Architecture analysis report
 ### Complete System Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         DESKTOP (Linux/WSL/macOS)                           │
-│                                                                             │
-│  [1] User saves .gcode file to ~/Desktop                                   │
-│       │                                                                     │
-│       ▼                                                                     │
-│  [2] File System Event (inotify/FSEvents)                                  │
-│       │                                                                     │
-│       ▼                                                                     │
-│  [3] watchdog.Observer → FileSystemEventHandler                            │
-│       │                                                                     │
-│       ├─ on_created()    - New file created                                │
-│       ├─ on_moved()      - File moved into directory                       │
-│       └─ on_modified()   - File modified (some editors)                    │
-│            │                                                                │
-│            ▼                                                                │
-│  [4] VALIDATION PIPELINE (3 Stages)                                        │
-│       │                                                                     │
-│       ├─ Stage 1: Initial Validation                                       │
-│       │   ├─ Path bounds check (within WATCH_DIR)                          │
-│       │   ├─ Symlink detection and rejection                               │
-│       │   ├─ File type check (must be regular file)                        │
-│       │   ├─ Extension validation (.gcode only)                            │
-│       │   └─ File size limits (1 byte - 1 GB)                              │
-│       │                                                                     │
-│       ├─ Stage 2: TOCTOU Mitigation                                        │
-│       │   └─ Re-validate immediately before transfer (<20 line gap)        │
-│       │                                                                     │
-│       └─ Stage 3: Command Injection Prevention                             │
-│           └─ shlex.quote() for remote paths                                │
-│               │                                                             │
-│               ▼                                                             │
-│  [5] rsync Command Construction                                            │
-│       │                                                                     │
-│       └─ rsync --stats --protect-args -avz --timeout=60                    │
-│           -e "ssh -p PORT -o StrictHostKeyChecking=yes ..."                │
-│           /path/to/file.gcode user@pi:/mnt/usb_share/                      │
-│               │                                                             │
-│               ▼                                                             │
-│  [6] Retry Logic (@retry_on_failure decorator)                             │
-│       │                                                                     │
-│       ├─ Attempt 1: Immediate                                              │
-│       ├─ Attempt 2: After 2s delay (if failed)                             │
-│       └─ Attempt 3: After 4s delay (if failed)                             │
-│               │                                                             │
-└───────────────┼─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                         DESKTOP (Linux/WSL/macOS)                         │
+│                                                                           │
+│  [1] User saves .gcode file to ~/Desktop                                  │
+│       │                                                                   │
+│       ▼                                                                   │
+│  [2] File System Event (inotify/FSEvents)                                 │
+│       │                                                                   │
+│       ▼                                                                   │
+│  [3] watchdog.Observer → FileSystemEventHandler                           │
+│       │                                                                   │
+│       ├─ on_created()    - New file created                               │
+│       ├─ on_moved()      - File moved into directory                      │
+│       └─ on_modified()   - File modified (some editors)                   │
+│            │                                                              │
+│            ▼                                                              │
+│  [4] VALIDATION PIPELINE (3 Stages)                                       │
+│       │                                                                   │
+│       ├─ Stage 1: Initial Validation                                      │
+│       │   ├─ Path bounds check (within WATCH_DIR)                         │
+│       │   ├─ Symlink detection and rejection                              │
+│       │   ├─ File type check (must be regular file)                       │
+│       │   ├─ Extension validation (.gcode only)                           │
+│       │   └─ File size limits (1 byte - 1 GB)                             │
+│       │                                                                   │
+│       ├─ Stage 2: TOCTOU Mitigation                                       │
+│       │   └─ Re-validate immediately before transfer (<20 line gap)       │
+│       │                                                                   │
+│       └─ Stage 3: Command Injection Prevention                            │
+│           └─ shlex.quote() for remote paths                               │
+│               │                                                           │
+│               ▼                                                           │
+│  [5] rsync Command Construction                                           │
+│       │                                                                   │
+│       └─ rsync --stats --protect-args -avz --timeout=60                   │
+│           -e "ssh -p PORT -o StrictHostKeyChecking=yes ..."               │
+│           /path/to/file.gcode user@pi:/mnt/usb_share/                     │
+│               │                                                           │
+│               ▼                                                           │
+│  [6] Retry Logic (@retry_on_failure decorator)                            │
+│       │                                                                   │
+│       ├─ Attempt 1: Immediate                                             │
+│       ├─ Attempt 2: After 2s delay (if failed)                            │
+│       └─ Attempt 3: After 4s delay (if failed)                            │
+│               │                                                           │
+└───────────────┼───────────────────────────────────────────────────────────┘
                 │
                 │ [7] NETWORK TRANSFER (SSH Tunnel)
                 │     • Cipher: aes128-ctr (optimized for ARM)
@@ -107,64 +107,64 @@ Reference: Architecture analysis report
                 │     • Speed: 5.5 MB/s (vs 260 KB/s before optimization)
                 │     • Security: Encrypted, key authentication
                 │
-┌───────────────▼─────────────────────────────────────────────────────────────┐
-│                      RASPBERRY PI (USB Gadget Server)                       │
-│                                                                             │
-│  [8] rsync Daemon Receives File                                            │
-│       │                                                                     │
-│       ▼                                                                     │
-│  [9] File Written to /mnt/usb_share/filename.gcode                         │
-│       │                                                                     │
-│       ▼                                                                     │
-│  [10] Filesystem Sync (flush kernel buffers)                               │
-│        │                                                                    │
-│        ▼                                                                    │
-│  [11] USB GADGET REFRESH (SSH triggered from desktop)                      │
-│        │                                                                    │
-│        ├─ Auto-detection:                                                  │
+┌───────────────▼───────────────────────────────────────────────────────────┐
+│                      RASPBERRY PI (USB Gadget Server)                     │
+│                                                                           │
+│  [8] rsync Daemon Receives File                                           │
+│       │                                                                   │
+│       ▼                                                                   │
+│  [9] File Written to /mnt/usb_share/filename.gcode                        │
+│       │                                                                   │
+│       ▼                                                                   │
+│  [10] Filesystem Sync (flush kernel buffers)                              │
+│        │                                                                  │
+│        ▼                                                                  │
+│  [11] USB GADGET REFRESH (SSH triggered from desktop)                     │
+│        │                                                                  │
+│        ├─ Auto-detection:                                                 │
 │        │   ├─ Check for ConfigFS: /sys/kernel/config/usb_gadget/          │
-│        │   └─ Check for module: lsmod | grep g_mass_storage                │
-│        │                                                                    │
-│        ├─ ConfigFS Method:                                                 │
-│        │   ├─ Read current UDC binding                                     │
-│        │   ├─ Unbind: echo "" > UDC                                        │
-│        │   ├─ Wait: sleep 1s                                               │
-│        │   └─ Rebind: echo $UDC > UDC                                      │
-│        │                                                                    │
-│        └─ Module Method:                                                   │
-│            ├─ Read module parameters                                       │
-│            ├─ Remove: modprobe -r g_mass_storage                           │
-│            ├─ Wait: sleep 2s                                               │
-│            └─ Re-insert: modprobe g_mass_storage ...                       │
-│                │                                                            │
-│                ▼                                                            │
-│  [12] USB Device Controller (dwc2 kernel module)                           │
-│        ├─ Send USB disconnect signal to printer                            │
-│        ├─ Wait for re-enumeration                                          │
-│        └─ Send USB reconnect signal to printer                             │
-│                │                                                            │
-└────────────────┼────────────────────────────────────────────────────────────┘
+│        │   └─ Check for module: lsmod | grep g_mass_storage               │
+│        │                                                                  │
+│        ├─ ConfigFS Method:                                                │
+│        │   ├─ Read current UDC binding                                    │
+│        │   ├─ Unbind: echo "" > UDC                                       │
+│        │   ├─ Wait: sleep 1s                                              │
+│        │   └─ Rebind: echo $UDC > UDC                                     │
+│        │                                                                  │
+│        └─ Module Method:                                                  │
+│            ├─ Read module parameters                                      │
+│            ├─ Remove: modprobe -r g_mass_storage                          │
+│            ├─ Wait: sleep 2s                                              │
+│            └─ Re-insert: modprobe g_mass_storage ...                      │
+│                │                                                          │
+│                ▼                                                          │
+│  [12] USB Device Controller (dwc2 kernel module)                          │
+│        ├─ Send USB disconnect signal to printer                           │
+│        ├─ Wait for re-enumeration                                         │
+│        └─ Send USB reconnect signal to printer                            │
+│                │                                                          │
+└────────────────┼──────────────────────────────────────────────────────────┘
                  │
                  │ [13] USB Cable (micro-USB, data-capable)
                  │      • Protocol: USB 2.0 Mass Storage Class
                  │      • Speed: Up to 480 Mbps (60 MB/s)
                  │
-┌────────────────▼────────────────────────────────────────────────────────────┐
-│                         3D PRINTER (USB Host)                               │
-│                                                                             │
-│  [14] USB Re-enumeration                                                   │
-│        ├─ Detect disconnect event                                          │
-│        ├─ Remove old device from filesystem                                │
-│        ├─ Detect reconnect event                                           │
-│        ├─ Enumerate USB Mass Storage device                                │
-│        ├─ Mount FAT32 filesystem                                           │
-│        └─ Scan for .gcode files                                            │
-│               │                                                             │
-│               ▼                                                             │
-│  [15] Printer Firmware Updates File List                                   │
-│        └─ New file appears in printer UI (~3-5 seconds)                    │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌────────────────▼──────────────────────────────────────────────────────────┐
+│                         3D PRINTER (USB Host)                             │
+│                                                                           │
+│  [14] USB Re-enumeration                                                  │
+│        ├─ Detect disconnect event                                         │
+│        ├─ Remove old device from filesystem                               │
+│        ├─ Detect reconnect event                                          │
+│        ├─ Enumerate USB Mass Storage device                               │
+│        ├─ Mount FAT32 filesystem                                          │
+│        └─ Scan for .gcode files                                           │
+│               │                                                           │
+│               ▼                                                           │
+│  [15] Printer Firmware Updates File List                                  │
+│        └─ New file appears in printer UI (~3-5 seconds)                   │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
 
 Total latency: ~10 seconds for 55MB file (vs 3.5 minutes before optimization)
 ```
