@@ -62,6 +62,7 @@ tests/
 # Development and diagnostic scripts
 check_gcode_monitor.sh
 deploy.sh
+uninstall_service.sh
 pi_scripts/diagnose_usb_gadget.sh
 
 # Development and Claude artifacts
