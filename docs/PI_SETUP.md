@@ -6,6 +6,7 @@ Complete guide for configuring your Raspberry Pi as a USB mass storage gadget fo
 
 ## Table of Contents
 
+- [Quick Start: Automated Setup](#quick-start-automated-setup) **← NEW! Recommended**
 - [Hardware Requirements](#hardware-requirements)
 - [Initial Pi Setup](#initial-pi-setup)
 - [USB Gadget Configuration](#usb-gadget-configuration)
@@ -16,6 +17,123 @@ Complete guide for configuring your Raspberry Pi as a USB mass storage gadget fo
 - [USB Gadget Refresh Scripts](#usb-gadget-refresh-scripts)
 - [Testing & Verification](#testing--verification)
 - [Troubleshooting](#troubleshooting)
+
+---
+
+## Quick Start: Automated Setup
+
+**NEW!** Skip manual configuration with our automated setup script that handles all the tedious steps for you.
+
+### Prerequisites
+
+Before running the automation script, you need:
+
+1. **Raspberry Pi OS installed** (Lite or Desktop)
+2. **USB gadget modules enabled** in `/boot/config.txt` and `/etc/modules`:
+   ```bash
+   # In /boot/config.txt
+   dtoverlay=dwc2
+
+   # In /etc/modules
+   dwc2
+   libcomposite
+   ```
+3. **FAT32 image file created**:
+   ```bash
+   sudo dd if=/dev/zero of=/piusb.bin bs=1M count=2048
+   sudo mkfs.vfat /piusb.bin
+   sudo mkdir -p /mnt/usb_share
+   ```
+4. **Image mounted** (add to `/etc/fstab`):
+   ```bash
+   /piusb.bin  /mnt/usb_share  vfat  loop,rw,users,umask=000  0  0
+   ```
+
+Then reboot: `sudo reboot`
+
+### Running the Automation Script
+
+1. **Copy scripts to your Pi**:
+   ```bash
+   # On your desktop (from project directory)
+   scp pi_scripts/*.sh your_username@raspberrypi.local:/tmp/
+   ```
+
+2. **SSH into Pi and run automation**:
+   ```bash
+   # SSH to Pi
+   ssh your_username@raspberrypi.local
+
+   # Move scripts to working directory
+   cd /tmp
+
+   # Preview what will be done (dry-run mode)
+   sudo bash pi_setup_auto.sh --dry-run
+
+   # Run full automated setup
+   sudo bash pi_setup_auto.sh
+   ```
+
+3. **What it does automatically**:
+   - ✅ Auto-detects USB gadget method (ConfigFS vs g_mass_storage module)
+   - ✅ Installs correct refresh script to `/usr/local/bin/`
+   - ✅ Configures passwordless sudo for refresh script
+   - ✅ Fixes WiFi power management (disables power save mode)
+   - ✅ Validates entire configuration
+   - ✅ Creates backups before modifying system files
+
+4. **Verify setup worked**:
+   ```bash
+   # Test refresh script (should not ask for password)
+   sudo /usr/local/bin/refresh_usb_gadget.sh
+
+   # Check WiFi power management (should show "off")
+   iwconfig wlan0 | grep "Power Management"
+
+   # Run diagnostic to see full configuration
+   sudo /usr/local/bin/diagnose_usb_gadget.sh
+   ```
+
+### Script Options
+
+```bash
+# Show help and available options
+sudo bash pi_setup_auto.sh --help
+
+# Dry-run mode (preview changes without applying)
+sudo bash pi_setup_auto.sh --dry-run
+
+# Skip WiFi power management configuration
+sudo bash pi_setup_auto.sh --skip-wifi
+
+# Skip backup creation (not recommended)
+sudo bash pi_setup_auto.sh --no-backup
+```
+
+### Troubleshooting Automated Setup
+
+**Script fails with "No USB gadget found"**:
+- Ensure you've rebooted after adding modules to `/boot/config.txt` and `/etc/modules`
+- Verify modules are loaded: `lsmod | grep -E "dwc2|libcomposite|g_mass_storage"`
+- Load manually if needed: `sudo modprobe dwc2 && sudo modprobe libcomposite`
+
+**Script fails with "Permission denied"**:
+- Make sure you're running with `sudo`
+- Check script has execute permissions: `chmod +x pi_setup_auto.sh`
+
+**WiFi configuration fails**:
+- Skip it and configure manually: `sudo bash pi_setup_auto.sh --skip-wifi`
+- See [Network Optimization](#network-optimization) section below
+
+**Need to rollback changes**:
+- Backups are saved to `~/.pi_setup_backup_<timestamp>/`
+- Restore manually or re-run setup
+
+---
+
+## Manual Setup (Alternative)
+
+If you prefer manual configuration or the automated script doesn't work for your setup, follow the sections below:
 
 ---
 

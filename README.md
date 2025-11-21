@@ -103,8 +103,9 @@ tail -f ~/.gcode_sync.log
 ```
 
 > ℹ️  See [Pi Setup Guide](docs/PI_SETUP.md) for configuring the Raspberry Pi
-> USB gadget environment. The Linux desktop component is already hardened with
-> systemd sandboxing and security validation.
+> USB gadget environment. **NEW: [Automated Pi Setup](pi_scripts/QUICK_SETUP.md)**
+> eliminates manual configuration steps! The Linux desktop component is already
+> hardened with systemd sandboxing and security validation.
 >
 > 💡 Install [uv](https://github.com/astral-sh/uv) for faster, reproducible
 > Python dependency management (`curl -Ls https://astral.sh/uv/install.sh | sh`).
