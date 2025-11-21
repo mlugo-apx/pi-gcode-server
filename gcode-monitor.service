@@ -7,6 +7,7 @@
 #   %HOME_DIR% - Your home directory
 #   %PROJECT_DIR% - Pi-gcode-server installation directory
 #   %WATCH_DIR% - Directory to monitor for .gcode files
+#   %LOCAL_SUBNET% - Auto-detected local network subnet (e.g., 192.168.1.0/24)
 
 [Unit]
 Description=GCode File Monitor and Sync Service
@@ -34,7 +35,7 @@ TasksMax=20
 RestrictAddressFamilies=AF_INET AF_INET6
 IPAddressDeny=any
 IPAddressAllow=localhost
-IPAddressAllow=192.168.1.0/24
+IPAddressAllow=%LOCAL_SUBNET%
 
 # Filesystem protection (minimal access)
 NoNewPrivileges=true
