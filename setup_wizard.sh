@@ -257,6 +257,10 @@ echo
 echo "5. Install as systemd service (optional):"
 echo "   ${YELLOW}./install_service.sh${NC}"
 echo
+echo "6. Set up automated health monitoring (optional):"
+echo "   ${YELLOW}crontab -e${NC}"
+echo "   ${YELLOW}*/15 * * * * $(pwd)/check_gcode_monitor.sh >> \$HOME/.gcode_health.log 2>&1${NC}"
+echo
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}✓ Setup complete! Happy printing! 🖨️${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
