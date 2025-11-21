@@ -15,8 +15,9 @@ import re
 import shutil
 from pathlib import Path
 from functools import wraps
+from typing import Dict, Any, Optional, Callable, Tuple, List
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 # Determine script directory
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -38,9 +39,9 @@ RETRY_INITIAL_DELAY = 2                  # Initial retry delay (seconds)
 RETRY_BACKOFF_MULTIPLIER = 2             # Exponential backoff multiplier
 
 
-def parse_rsync_stats(stdout):
+def parse_rsync_stats(stdout: Optional[str]) -> Dict[str, Any]:
     """Parse rsync --stats output into a dictionary of values."""
-    stats = {}
+    stats: Dict[str, Any] = {}
 
     if not stdout:
         return stats
@@ -72,8 +73,8 @@ def parse_rsync_stats(stdout):
 
     return stats
 
-def retry_on_failure(max_attempts=RETRY_MAX_ATTEMPTS, initial_delay=RETRY_INITIAL_DELAY,
-                     backoff_multiplier=RETRY_BACKOFF_MULTIPLIER):
+def retry_on_failure(max_attempts: int = RETRY_MAX_ATTEMPTS, initial_delay: float = RETRY_INITIAL_DELAY,
+                     backoff_multiplier: float = RETRY_BACKOFF_MULTIPLIER) -> Callable:
     """
     Decorator to retry function on transient failures with exponential backoff.
 
@@ -87,9 +88,9 @@ def retry_on_failure(max_attempts=RETRY_MAX_ATTEMPTS, initial_delay=RETRY_INITIA
         or subprocess.TimeoutExpired. On success, returns a tuple of
         (result, attempts_used).
     """
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Tuple[Any, int]:
             attempt = 1
             delay = initial_delay
 
@@ -113,7 +114,7 @@ def retry_on_failure(max_attempts=RETRY_MAX_ATTEMPTS, initial_delay=RETRY_INITIA
         return wrapper
     return decorator
 
-def load_config():
+def load_config() -> Dict[str, str]:
     """Load configuration from config.local"""
     config_file = SCRIPT_DIR / 'config.local'
 
@@ -270,26 +271,26 @@ logging.basicConfig(
 class GCodeHandler(FileSystemEventHandler):
     """Handler for .gcode file events"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.syncing = set()  # Track files currently being synced
         self.syncing_lock = threading.Lock()  # Prevent race conditions
 
-    def on_created(self, event):
+    def on_created(self, event: FileSystemEvent) -> None:
         """Called when a file is created"""
         if not event.is_directory and event.src_path.endswith('.gcode'):
             self.sync_file(event.src_path)
 
-    def on_moved(self, event):
+    def on_moved(self, event: FileSystemEvent) -> None:
         """Called when a file is moved into the directory"""
         if not event.is_directory and event.dest_path.endswith('.gcode'):
             self.sync_file(event.dest_path)
 
-    def on_modified(self, event):
+    def on_modified(self, event: FileSystemEvent) -> None:
         """Called when a file is modified (handles saves from some editors)"""
         if not event.is_directory and event.src_path.endswith('.gcode'):
             self.sync_file(event.src_path)
 
-    def sync_file(self, file_path):
+    def sync_file(self, file_path: str) -> None:
         """Sync a file to the remote server"""
         # Thread-safe check and add
         with self.syncing_lock:
@@ -440,7 +441,7 @@ class GCodeHandler(FileSystemEventHandler):
                 self.syncing.discard(file_path)
 
     @retry_on_failure()
-    def _execute_rsync_with_retry(self, rsync_cmd, timeout_seconds):
+    def _execute_rsync_with_retry(self, rsync_cmd: List[str], timeout_seconds: int) -> subprocess.CompletedProcess:
         """Execute rsync command with retry logic for transient failures.
 
         Args:
@@ -464,7 +465,7 @@ class GCodeHandler(FileSystemEventHandler):
         )
 
     @retry_on_failure(max_attempts=3, initial_delay=2, backoff_multiplier=2)
-    def _execute_usb_refresh_with_retry(self):
+    def _execute_usb_refresh_with_retry(self) -> bool:
         """Execute USB refresh with subprocess (called by retry decorator).
 
         Returns:
@@ -497,7 +498,7 @@ class GCodeHandler(FileSystemEventHandler):
             logging.debug(f"Refresh output: {result.stdout.strip()}")
         return True
 
-    def refresh_usb_gadget(self):
+    def refresh_usb_gadget(self) -> bool:
         """Trigger USB gadget refresh on the Pi with retry logic.
 
         Returns:
@@ -528,7 +529,7 @@ class GCodeHandler(FileSystemEventHandler):
             return False
 
 
-def main():
+def main() -> None:
     """Main function"""
     # Check if watchdog is installed
     try:
