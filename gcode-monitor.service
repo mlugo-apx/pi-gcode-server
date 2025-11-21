@@ -39,7 +39,7 @@ IPAddressAllow=%LOCAL_SUBNET%
 
 # Filesystem protection (minimal access)
 NoNewPrivileges=true
-PrivateTmp=true
+# PrivateTmp=true  # Disabled: can cause namespace issues
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=%HOME_DIR%/.gcode_sync.log
@@ -48,11 +48,11 @@ ReadOnlyPaths=%WATCH_DIR%
 ReadOnlyPaths=%PROJECT_DIR%
 
 # Additional security hardening
-PrivateDevices=true
+# PrivateDevices=true  # Disabled: can cause namespace issues
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
-RestrictNamespaces=true
+# RestrictNamespaces=true  # Disabled: incompatible with Python applications
 RestrictRealtime=true
 RestrictSUIDSGID=true
 LockPersonality=true
@@ -63,10 +63,10 @@ ProtectClock=true
 CapabilityBoundingSet=
 AmbientCapabilities=
 
-# System call filtering
-SystemCallFilter=@system-service
-SystemCallFilter=~@privileged @resources @obsolete
-SystemCallArchitectures=native
+# System call filtering - relaxed for Python compatibility
+# SystemCallFilter=@system-service
+# SystemCallFilter=~@privileged @resources @obsolete
+# SystemCallArchitectures=native
 
 # Logging
 StandardOutput=journal
