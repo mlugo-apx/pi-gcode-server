@@ -54,6 +54,11 @@ config.local
 deprecated/*.py
 deprecated/*.sh
 
+# Test scripts and test data
+run_tests.sh
+test_sync.sh
+tests/
+
 # Development and Claude artifacts
 FIX_TRACKING.txt
 PROJECT_STATUS.md
@@ -63,3 +68,4 @@ SETUP_COMPLETE.md
 diagnostic_output.txt
 docs/GIT_SETUP_FOR_CLAUDE.md
 PROMOTION_GUIDE.md
+.playwright-mcp/
