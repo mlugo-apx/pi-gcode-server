@@ -32,7 +32,8 @@ jobs:
 
       - name: Security scan with bandit
         run: |
-          bandit -r monitor_and_sync.py -f txt || true
+          # Fail on HIGH or CRITICAL severity issues only
+          bandit -r monitor_and_sync.py -f txt -ll
 
   lint-shell:
     name: Lint Shell Scripts
@@ -45,13 +46,15 @@ jobs:
 
       - name: Lint bash scripts
         run: |
-          shellcheck monitor_and_sync.sh || true
-          shellcheck install_service.sh || true
-          shellcheck setup_wizard.sh || true
-          shellcheck lib/error_handler.sh || true
-          shellcheck pi_scripts/refresh_usb_gadget.sh || true
-          shellcheck pi_scripts/refresh_usb_gadget_configfs.sh || true
-          shellcheck pi_scripts/refresh_usb_gadget_module.sh || true
+          # Fail build on shellcheck errors (warnings allowed)
+          shellcheck monitor_and_sync.sh
+          shellcheck install_service.sh
+          shellcheck setup_wizard.sh
+          shellcheck lib/error_handler.sh
+          shellcheck pi_scripts/refresh_usb_gadget.sh
+          shellcheck pi_scripts/refresh_usb_gadget_configfs.sh
+          shellcheck pi_scripts/refresh_usb_gadget_module.sh
+          echo "✓ All shell scripts passed shellcheck"
 
   test-installation:
     name: Test Installation
