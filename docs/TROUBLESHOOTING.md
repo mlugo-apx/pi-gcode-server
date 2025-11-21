@@ -367,7 +367,9 @@ STDERR: rsync: mkdir "/mnt/usb_share" failed: No such file or directory
 **Solution**: Create directory on Pi
 ```bash
 ssh your_pi "sudo mkdir -p /mnt/usb_share"
-ssh your_pi "sudo chmod 777 /mnt/usb_share"
+ssh your_pi "sudo chmod 755 /mnt/usb_share"
+# Or if you need write access:
+# ssh your_pi "sudo chown $USER:$USER /mnt/usb_share && sudo chmod 755 /mnt/usb_share"
 ```
 
 #### 4. Disk Full on Pi

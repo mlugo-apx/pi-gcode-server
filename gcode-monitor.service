@@ -1,3 +1,13 @@
+# GCode Monitor Systemd Service Template
+# This file contains placeholders that are replaced during installation.
+# Run install_service.sh to generate and install the actual service file.
+#
+# Placeholders:
+#   %USERNAME% - Your system username
+#   %HOME_DIR% - Your home directory
+#   %PROJECT_DIR% - Pi-gcode-server installation directory
+#   %WATCH_DIR% - Directory to monitor for .gcode files
+
 [Unit]
 Description=GCode File Monitor and Sync Service
 After=network-online.target
@@ -7,9 +17,9 @@ StartLimitIntervalSec=600
 
 [Service]
 Type=simple
-User=your_username
-WorkingDirectory=/home/your_username/pi-gcode-server
-ExecStart=/usr/bin/python3 /home/your_username/pi-gcode-server/monitor_and_sync.py
+User=%USERNAME%
+WorkingDirectory=%PROJECT_DIR%
+ExecStart=/usr/bin/python3 %PROJECT_DIR%/monitor_and_sync.py
 
 # Restart policy
 Restart=on-failure
@@ -31,10 +41,10 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/your_username/.gcode_sync.log
-ReadWritePaths=/home/your_username/.local
-ReadOnlyPaths=/home/your_username/Desktop
-ReadOnlyPaths=/home/your_username/pi-gcode-server
+ReadWritePaths=%HOME_DIR%/.gcode_sync.log
+ReadWritePaths=%HOME_DIR%/.local
+ReadOnlyPaths=%WATCH_DIR%
+ReadOnlyPaths=%PROJECT_DIR%
 
 # Additional security hardening
 PrivateDevices=true

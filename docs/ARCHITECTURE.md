@@ -778,7 +778,7 @@ ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/home/your_username/.gcode_sync.log
 ReadOnlyPaths=/home/your_username/Desktop  # Example: adjust to match WATCH_DIR
-ReadOnlyPaths=/home/your_username/Claude_Code/Send_To_Printer
+ReadOnlyPaths=/home/your_username/pi-gcode-server
 ```
 
 **Effect**:
@@ -1269,9 +1269,9 @@ retry_command 3 2 2 rsync -avz /src /dest
 
 ## References
 
-- **Code**: `/home/your_username/Claude_Code/Send_To_Printer/`
-- **Tests**: `/home/your_username/Claude_Code/Send_To_Printer/tests/`
-- **Documentation**: `/home/your_username/Claude_Code/Send_To_Printer/docs/`
+- **Code**: `/home/your_username/pi-gcode-server/`
+- **Tests**: `/home/your_username/pi-gcode-server/tests/`
+- **Documentation**: `/home/your_username/pi-gcode-server/docs/`
 - **GitHub**: https://github.com/mlugo-apx/pi-gcode-server
 
 ---

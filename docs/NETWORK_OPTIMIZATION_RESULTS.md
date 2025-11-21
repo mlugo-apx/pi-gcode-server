@@ -257,7 +257,7 @@ Not implemented but available if you want more speed:
 
 ## Conclusion
 
-Successfully diagnosed and fixed network performance issues in the Send_To_Printer system. The primary issue was WiFi power management causing severe packet loss and throttling. Combined optimizations achieved **21x real-world speed improvement**.
+Successfully diagnosed and fixed network performance issues in the pi-gcode-server system. The primary issue was WiFi power management causing severe packet loss and throttling. Combined optimizations achieved **21x real-world speed improvement**.
 
 **Status**: ✅ All optimizations permanent and active
 **User experience**: Dramatically improved

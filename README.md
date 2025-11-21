@@ -450,7 +450,7 @@ Use the bundled health check to verify the service and logs are fresh:
 For periodic checks, add a cron entry (every 15 minutes shown):
 
 ```cron
-*/15 * * * * /home/your_username/Claude_Code/Send_To_Printer/check_gcode_monitor.sh >> /home/your_username/Claude_Code/Send_To_Printer/logs/health_check.log 2>&1
+*/15 * * * * /home/your_username/pi-gcode-server/check_gcode_monitor.sh >> /home/your_username/pi-gcode-server/logs/health_check.log 2>&1
 ```
 
 The script validates:

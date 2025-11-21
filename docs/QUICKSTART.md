@@ -3,7 +3,7 @@
 ## Automated Setup (Recommended)
 
 ```bash
-cd /home/your_username/Claude_Code/Send_To_Printer
+cd /home/your_username/pi-gcode-server
 ./setup_wizard.sh
 ```
 
@@ -135,7 +135,7 @@ journalctl -u gcode-monitor.service -n 50
 
 ## Files Location
 
-- **Local monitor**: `/home/your_username/Claude_Code/Send_To_Printer/`
+- **Local monitor**: `/home/your_username/pi-gcode-server/`
 - **Pi refresh script**: `/usr/local/bin/refresh_usb_gadget.sh`
 - **Local logs**: `~/.gcode_sync.log`
 - **Pi logs**: `/var/log/usb_gadget_refresh.log`

@@ -7,6 +7,6 @@
 
 # File system event monitoring
 watchdog==3.0.0 \
-    --hash=sha256:0e06ab8858a76e1219e68c7573dfdd65c7c5e5f7f1f77bb47c2f1cab5041e4c9 \
+    --hash=sha256:d429c2430c93b7903914e4db9a966c7f2b068dd2ebdd2fa9b9ce094c7d459f33 \
     --hash=sha256:8ae9cda41fa114e28faf86cb137d751a17ffd0316d1c34ccf2235e8a84365c7f \
-    --hash=sha256:3c1c7a59cd850f2ec12fd1b3f9f47f0e4c3b9e4b4e3d1e9e7e6c2e9e4e3e2e1
+    --hash=sha256:4d98a320595da7a7c5a18fc48cb633c2e73cda78f93cac2ef42d42bf609a33f9

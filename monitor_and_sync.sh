@@ -18,8 +18,26 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# Source the configuration
-source "$CONFIG_FILE"
+# Parse configuration file safely (without executing code)
+# This prevents code injection from malicious config files
+parse_config() {
+    while IFS='=' read -r key value; do
+        # Skip comments and empty lines
+        [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+
+        # Remove leading/trailing whitespace
+        key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+        # Remove quotes from value
+        value=$(echo "$value" | sed 's/^["'\'']\(.*\)["'\'']$/\1/')
+
+        # Export the variable
+        export "$key=$value"
+    done < "$CONFIG_FILE"
+}
+
+parse_config
 
 # Validate required variables
 REQUIRED_VARS=("WATCH_DIR" "REMOTE_USER" "REMOTE_HOST" "REMOTE_PORT" "REMOTE_PATH" "LOG_FILE")

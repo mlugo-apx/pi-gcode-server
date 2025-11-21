@@ -416,7 +416,22 @@ sudo visudo
 your_username ALL=(ALL) NOPASSWD: /usr/local/bin/refresh_usb_gadget.sh
 ```
 
-**Security Note**: This only allows passwordless sudo for this specific script, not all commands.
+**Security Notes**:
+- This only allows passwordless sudo for this specific script, not all commands
+- **Verify script integrity** after installation to ensure it hasn't been tampered with:
+
+```bash
+# Generate checksum after initial installation
+sha256sum /usr/local/bin/refresh_usb_gadget.sh > ~/refresh_usb_gadget.sha256
+
+# Later, verify the script hasn't been modified
+sha256sum -c ~/refresh_usb_gadget.sha256
+
+# Output should show: /usr/local/bin/refresh_usb_gadget.sh: OK
+```
+
+- If you update the script, regenerate the checksum
+- Consider setting immutable flag to prevent modifications: `sudo chattr +i /usr/local/bin/refresh_usb_gadget.sh` (removes ability to modify even with root)
 
 ### 3. Test Refresh Script
 

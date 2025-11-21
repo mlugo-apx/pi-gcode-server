@@ -463,14 +463,16 @@ class GCodeHandler(FileSystemEventHandler):
             timeout=timeout_seconds
         )
 
-    def refresh_usb_gadget(self):
-        """Trigger USB gadget refresh on the Pi.
+    @retry_on_failure(max_attempts=3, initial_delay=2, backoff_multiplier=2)
+    def _execute_usb_refresh_with_retry(self):
+        """Execute USB refresh with subprocess (called by retry decorator).
 
         Returns:
-            bool: True if refresh succeeded, False otherwise
+            bool: True if refresh succeeded
 
         Raises:
-            subprocess.CalledProcessError: If refresh fails critically
+            subprocess.CalledProcessError: If refresh fails (triggers retry)
+            subprocess.TimeoutExpired: If refresh times out (triggers retry)
         """
         ssh_cmd = [
             "ssh",
@@ -483,26 +485,37 @@ class GCodeHandler(FileSystemEventHandler):
             "sudo /usr/local/bin/refresh_usb_gadget.sh"
         ]
 
+        result = subprocess.run(
+            ssh_cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=USB_REFRESH_TIMEOUT
+        )
+        logging.info("USB gadget refreshed successfully")
+        if result.stdout:
+            logging.debug(f"Refresh output: {result.stdout.strip()}")
+        return True
+
+    def refresh_usb_gadget(self):
+        """Trigger USB gadget refresh on the Pi with retry logic.
+
+        Returns:
+            bool: True if refresh succeeded, False otherwise
+        """
         try:
-            result = subprocess.run(
-                ssh_cmd,
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=USB_REFRESH_TIMEOUT
-            )
-            logging.info("USB gadget refreshed successfully")
-            if result.stdout:
-                logging.debug(f"Refresh output: {result.stdout.strip()}")
-            return True
+            result, attempts = self._execute_usb_refresh_with_retry()
+            if attempts > 1:
+                logging.info(f"USB refresh succeeded after {attempts} attempts")
+            return result
 
         except subprocess.TimeoutExpired:
-            logging.error("USB gadget refresh timed out after 30 seconds")
+            logging.error("USB gadget refresh timed out after all retries")
             logging.warning("File was synced but printer may not see it until Pi reboot")
             return False
 
         except subprocess.CalledProcessError as e:
-            logging.error(f"USB gadget refresh failed with exit code {e.returncode}")
+            logging.error(f"USB gadget refresh failed after all retries (exit code {e.returncode})")
             if e.stderr:
                 logging.error(f"Error details: {e.stderr.strip()}")
             logging.warning("File was synced but printer may not see it until Pi reboot")
@@ -521,23 +534,31 @@ def main():
     try:
         import watchdog
     except ImportError:
-        logging.error("watchdog module not found. Installing...")
+        logging.warning("watchdog module not found. Installing...")
         req_file = SCRIPT_DIR / "requirements.txt"
         uv_exe = shutil.which("uv")
-        if uv_exe:
-            logging.info("Using uv to install Python dependencies")
-            if req_file.exists():
-                subprocess.run([uv_exe, "pip", "install", "-r", str(req_file)], check=True)
+        try:
+            if uv_exe:
+                logging.info("Using uv to install Python dependencies")
+                if req_file.exists():
+                    subprocess.run([uv_exe, "pip", "install", "-r", str(req_file)], check=True)
+                else:
+                    subprocess.run([uv_exe, "pip", "install", "watchdog==3.0.0"], check=True)
             else:
-                subprocess.run([uv_exe, "pip", "install", "watchdog==3.0.0"], check=True)
-        else:
-            logging.info("Using pip to install Python dependencies")
-            if req_file.exists():
-                subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], check=True)
-            else:
-                subprocess.run([sys.executable, "-m", "pip", "install", "watchdog==3.0.0"], check=True)
-        logging.info("Please restart the script")
-        sys.exit(1)
+                logging.info("Using pip to install Python dependencies")
+                if req_file.exists():
+                    subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], check=True)
+                else:
+                    subprocess.run([sys.executable, "-m", "pip", "install", "watchdog==3.0.0"], check=True)
+
+            logging.info("Installation successful. Reloading module...")
+            # Dynamic import after installation
+            import watchdog
+            logging.info("watchdog module loaded successfully. Continuing...")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to install watchdog: {e}")
+            logging.error("Please install manually: pip install -r requirements.txt")
+            sys.exit(1)
 
     # Create watch directory if it doesn't exist
     os.makedirs(WATCH_DIR, exist_ok=True)
