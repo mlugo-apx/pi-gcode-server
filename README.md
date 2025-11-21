@@ -11,6 +11,14 @@
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/mlugo-apx/pi-gcode-server/graphs/commit-activity)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
+> **⚠️ Platform Support:**
+> - ✅ **Ubuntu 24.04 LTS**: Fully tested by maintainer
+> - 🔍 **Other Linux distros**: Should work, testers needed ([report here](https://github.com/mlugo-apx/pi-gcode-server/issues))
+> - 🔍 **Windows (WSL2)**: Documented but untested, testers needed
+> - 🔍 **macOS**: Documented but untested, testers needed
+>
+> Example configs exist for multiple platforms ([see examples/](examples/)), but only Ubuntu 24.04 has been validated. Help us expand support by testing and reporting results!
+
 Automatically sync `.gcode` files wirelessly to your 3D printer through a Raspberry Pi configured as a USB mass storage device. No SD card swapping, no manual transfers, no printer reboots.
 
 ### The Problem
