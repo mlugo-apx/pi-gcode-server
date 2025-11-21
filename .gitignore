@@ -59,6 +59,11 @@ run_tests.sh
 test_sync.sh
 tests/
 
+# Development and diagnostic scripts
+check_gcode_monitor.sh
+deploy.sh
+pi_scripts/diagnose_usb_gadget.sh
+
 # Development and Claude artifacts
 FIX_TRACKING.txt
 PROJECT_STATUS.md
