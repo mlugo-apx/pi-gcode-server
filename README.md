@@ -184,20 +184,37 @@ See [Network Optimization Results](docs/NETWORK_OPTIMIZATION_RESULTS.md) for det
 
 **Works with any 3D printer that supports USB mass storage mode**, which includes most modern printers.
 
-### ✅ Confirmed Working
+### ✅ Confirmed Working (Maintainer Verified)
 
-| Printer Model | Status | Notes | Contributor |
-|--------------|--------|-------|-------------|
-| **Creality Ender 3** | ✅ Tested | USB mass storage fully supported | @mlugo-apx |
-| **Creality Ender 3 V2** | ✅ Tested | Works with stock firmware | Community |
-| **Creality Ender 3 Pro** | ✅ Tested | Pi Zero W sufficient | Community |
-| **Prusa i3 MK3S** | ✅ Tested | Excellent performance, fast recognition | Community |
-| **Prusa i3 MK3S+** | ✅ Tested | Pi Zero 2W recommended for large files | Community |
-| **Prusa MK4** | ✅ Tested | Has built-in networking, but USB works | Community |
-| **Creality CR-10** | ✅ Tested | Standard USB mass storage | Community |
-| **Creality CR-10 V2** | ✅ Tested | Works with default settings | Community |
-| **AnyCubic Kobra** | ✅ Tested | USB port supports mass storage | Community |
-| **AnyCubic Vyper** | ✅ Tested | Files appear immediately | Community |
+| Printer Model | Status | Notes | Tested By |
+|--------------|--------|-------|-----------|
+| **AnyCubic Kobra 2 Max** | ✅ Verified | USB mass storage fully supported, files appear immediately | @mlugo-apx |
+
+### 🤔 Should Work (Community Reports Needed)
+
+These printers support USB mass storage and should work, but haven't been tested by the maintainer yet:
+
+**Creality Series**:
+- Ender 3 / Ender 3 V2 / Ender 3 Pro
+- CR-10 / CR-10 V2
+- CR-6 SE, CR-30, Ender 5 series
+
+**Prusa Series**:
+- i3 MK3S / MK3S+ / MK4
+- Mini, XL (with USB port)
+
+**AnyCubic Series**:
+- Kobra (standard)
+- Vyper
+- Mega series
+
+**Other Brands**:
+- Artillery: Sidewinder, Genius
+- Elegoo: Neptune series
+- Sovol: SV01, SV02, SV06
+- Any printer with USB mass storage support
+
+**📝 Have you tested this?** [Report your printer compatibility →](https://github.com/mlugo-apx/pi-gcode-server/issues/new?template=printer_compatibility.md)
 
 ### 📋 Requirements for Compatibility
 
