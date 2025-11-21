@@ -1,0 +1,25 @@
+# Example configuration for Windows + WSL2
+# Copy this to config.local and customize for your setup
+#
+# Platform: Windows 10/11 with WSL2 (Ubuntu recommended)
+# Hardware: Any 3D printer with USB mass storage + Raspberry Pi
+# Connection: WiFi or Ethernet
+
+# Local machine settings
+# NOTE: WSL2 can access Windows filesystem via /mnt/c/
+WATCH_DIR="/mnt/c/Users/YourUsername/Desktop"  # Windows Desktop via WSL2
+LOG_FILE="$HOME/.gcode_sync.log"                # Log file in WSL2 home
+
+# Raspberry Pi connection settings
+REMOTE_USER="pi"                    # Pi username (default: pi)
+REMOTE_HOST="192.168.1.100"         # Pi IP address (change to yours)
+REMOTE_PORT="22"                    # SSH port (default: 22)
+REMOTE_PATH="/mnt/usb_share"        # USB gadget mount point on Pi
+
+# WSL2-specific notes:
+# - Replace "YourUsername" with your Windows username
+# - Windows Desktop is at /mnt/c/Users/YourUsername/Desktop in WSL2
+# - Can also watch Downloads: /mnt/c/Users/YourUsername/Downloads
+# - SSH keys should be in WSL2 home (~/.ssh/), not Windows
+# - Use "wsl --install" to set up WSL2 if not already installed
+# - Ubuntu 22.04 LTS recommended for WSL2 distribution

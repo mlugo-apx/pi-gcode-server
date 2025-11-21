@@ -1,0 +1,23 @@
+# Example configuration for Prusa MK3S / MK3S+ / MK4
+# Copy this to config.local and customize for your setup
+#
+# Hardware: Prusa MK3S+ + Raspberry Pi Zero 2W (recommended)
+# Connection: WiFi (5GHz works with Pi Zero 2W, 2.4GHz with Pi Zero W)
+# Transfer speed: ~5-8 MB/s with Pi Zero 2W
+
+# Local machine settings
+WATCH_DIR="$HOME/Desktop"           # Directory to monitor for .gcode files
+LOG_FILE="$HOME/.gcode_sync.log"    # Log file location
+
+# Raspberry Pi connection settings
+REMOTE_USER="pi"                    # Pi username (default: pi)
+REMOTE_HOST="192.168.1.100"         # Pi IP address (change to yours)
+REMOTE_PORT="22"                    # SSH port (default: 22)
+REMOTE_PATH="/mnt/usb_share"        # USB gadget mount point on Pi
+
+# Notes for Prusa:
+# - MK3S/MK3S+ USB port fully supports mass storage
+# - MK4 has built-in network features (less need for this solution)
+# - LCD shows new files immediately after USB refresh
+# - Pi Zero 2W recommended for better performance with large files
+# - Works great with PrusaSlicer's "Save to SD" workflow

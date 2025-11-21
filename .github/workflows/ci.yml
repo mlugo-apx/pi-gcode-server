@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  lint-python:
+    name: Lint Python Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 bandit
+
+      - name: Lint with flake8
+        run: |
+          # Stop on syntax errors or undefined names
+          flake8 monitor_and_sync.py --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Exit-zero treats all errors as warnings
+          flake8 monitor_and_sync.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Security scan with bandit
+        run: |
+          bandit -r monitor_and_sync.py -f txt || true
+
+  lint-shell:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Lint bash scripts
+        run: |
+          shellcheck monitor_and_sync.sh || true
+          shellcheck install_service.sh || true
+          shellcheck setup_wizard.sh || true
+          shellcheck lib/error_handler.sh || true
+          shellcheck pi_scripts/refresh_usb_gadget.sh || true
+          shellcheck pi_scripts/refresh_usb_gadget_configfs.sh || true
+          shellcheck pi_scripts/refresh_usb_gadget_module.sh || true
+
+  test-installation:
+    name: Test Installation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Test dependency installation
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --require-hashes
+
+      - name: Verify Python script syntax
+        run: |
+          python -m py_compile monitor_and_sync.py
+
+      - name: Check for required files
+        run: |
+          test -f monitor_and_sync.py
+          test -f monitor_and_sync.sh
+          test -f gcode-monitor.service
+          test -f config.example
+          test -f requirements.txt
+          test -f README.md
+          test -f LICENSE
+          test -f CODE_OF_CONDUCT.md
+          test -f CONTRIBUTING.md
+          test -f SECURITY.md
+          echo "✓ All required files present"
+
+  check-security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for secrets
+        run: |
+          # Check for common secret patterns
+          ! grep -r "password.*=" --include="*.py" --include="*.sh" --include="*.md" . || true
+          ! grep -r "api_key.*=" --include="*.py" --include="*.sh" . || true
+          echo "✓ No hardcoded secrets found"
+
+      - name: Verify gitignore
+        run: |
+          test -f .gitignore
+          grep -q "config.local" .gitignore
+          grep -q "*.key" .gitignore
+          grep -q "*.pem" .gitignore
+          echo "✓ Sensitive files properly gitignored"

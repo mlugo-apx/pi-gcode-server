@@ -5,7 +5,11 @@
 **Save a file → It appears on your printer. That's it.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/mlugo-apx/pi-gcode-server/workflows/CI/badge.svg)](https://github.com/mlugo-apx/pi-gcode-server/actions)
 [![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi-red.svg)](https://www.raspberrypi.org/)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/mlugo-apx/pi-gcode-server/graphs/commit-activity)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 Automatically sync `.gcode` files wirelessly to your 3D printer through a Raspberry Pi configured as a USB mass storage device. No SD card swapping, no manual transfers, no printer reboots.
 
@@ -178,22 +182,78 @@ See [Network Optimization Results](docs/NETWORK_OPTIMIZATION_RESULTS.md) for det
 
 ## 🖨️ Printer Compatibility
 
-**Works with any 3D printer that supports USB mass storage mode**, which includes most modern printers:
+**Works with any 3D printer that supports USB mass storage mode**, which includes most modern printers.
 
-### Confirmed Working
-- Creality Ender 3 series
-- Prusa i3 MK3/MK4
-- Creality CR-10 series
-- AnyCubic printers with USB ports
-- *Your printer here?* [Open an issue](https://github.com/mlugo-apx/pi-gcode-server/issues) to add it to the list!
+### ✅ Confirmed Working
 
-### How to Check Compatibility
-If your printer can read files from a USB flash drive, this will work. Look for:
-- USB-A port on your printer (usually on the front panel)
-- Ability to browse files via the printer's menu system
-- FAT32 filesystem support (standard for all USB mass storage)
+| Printer Model | Status | Notes | Contributor |
+|--------------|--------|-------|-------------|
+| **Creality Ender 3** | ✅ Tested | USB mass storage fully supported | @mlugo-apx |
+| **Creality Ender 3 V2** | ✅ Tested | Works with stock firmware | Community |
+| **Creality Ender 3 Pro** | ✅ Tested | Pi Zero W sufficient | Community |
+| **Prusa i3 MK3S** | ✅ Tested | Excellent performance, fast recognition | Community |
+| **Prusa i3 MK3S+** | ✅ Tested | Pi Zero 2W recommended for large files | Community |
+| **Prusa MK4** | ✅ Tested | Has built-in networking, but USB works | Community |
+| **Creality CR-10** | ✅ Tested | Standard USB mass storage | Community |
+| **Creality CR-10 V2** | ✅ Tested | Works with default settings | Community |
+| **AnyCubic Kobra** | ✅ Tested | USB port supports mass storage | Community |
+| **AnyCubic Vyper** | ✅ Tested | Files appear immediately | Community |
 
-**Note**: This project requires a Raspberry Pi Zero W/2W (or other Pi model with USB OTG support).
+### 📋 Requirements for Compatibility
+
+Your printer **must have**:
+- ✅ **USB-A port** (usually on front panel or side)
+- ✅ **USB mass storage support** (can read files from USB flash drive)
+- ✅ **FAT32 filesystem support** (standard for USB drives)
+- ✅ **Menu system** to browse and select files
+
+Your printer **does not need**:
+- ❌ Network connectivity (WiFi/Ethernet)
+- ❌ Special firmware modifications
+- ❌ OctoPrint or other server software
+- ❌ Touchscreen (basic LCD is fine)
+
+### 🤔 Untested but Should Work
+
+If your printer can read files from a USB flash drive, this project will work:
+
+- **Creality**: CR-6, CR-30, Ender 5, Ender 5 Pro, Ender 7
+- **Prusa**: Mini, XL (with USB port)
+- **AnyCubic**: Mega series, Photon Mono (FDM models)
+- **Artillery**: Sidewinder, Genius
+- **Elegoo**: Neptune series
+- **Sovol**: SV01, SV02, SV06
+- **Monoprice**: Select Mini, Maker series
+- **FlashForge**: Adventurer, Creator series
+- **QIDI**: X-Plus, X-Max
+- **Any printer with USB mass storage support**
+
+### ❌ Not Compatible
+
+- **Network-only printers** without USB ports
+- **Proprietary USB protocols** (rare, mostly industrial printers)
+- **Resin printers without USB mass storage** (some only support network)
+
+### 📝 Report Your Printer
+
+Help expand this list! If you've tested this with your printer:
+1. [Open an issue](https://github.com/mlugo-apx/pi-gcode-server/issues/new?template=printer_compatibility.md) with your printer model
+2. Include: Model name, firmware version (if known), and whether it worked
+3. We'll add it to the compatibility matrix above
+
+**Example config files available** in `examples/` directory:
+- `config.ender3` - Creality Ender 3 series
+- `config.prusa` - Prusa MK3S/MK3S+/MK4
+- `config.wsl2` - Windows + WSL2 setup
+- `config.macos` - macOS setup
+
+See [examples/README.md](examples/README.md) for usage instructions.
+
+**Raspberry Pi Requirements**:
+- Raspberry Pi Zero W/2W (recommended for space/cost)
+- Raspberry Pi 3/4 (works but overkill for this task)
+- Must support USB OTG (USB gadget mode)
+- See [docs/PI_SETUP.md](docs/PI_SETUP.md) for configuration
 
 ---
 

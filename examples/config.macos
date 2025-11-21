@@ -1,0 +1,24 @@
+# Example configuration for macOS
+# Copy this to config.local and customize for your setup
+#
+# Platform: macOS 12+ (Monterey, Ventura, Sonoma)
+# Hardware: Any 3D printer with USB mass storage + Raspberry Pi
+# Connection: WiFi or Ethernet
+
+# Local machine settings
+WATCH_DIR="$HOME/Desktop"           # macOS Desktop
+LOG_FILE="$HOME/.gcode_sync.log"    # Log file location
+
+# Raspberry Pi connection settings
+REMOTE_USER="pi"                    # Pi username (default: pi)
+REMOTE_HOST="192.168.1.100"         # Pi IP address (change to yours)
+REMOTE_PORT="22"                    # SSH port (default: 22)
+REMOTE_PATH="/mnt/usb_share"        # USB gadget mount point on Pi
+
+# macOS-specific notes:
+# - Python 3 is available via Homebrew: brew install python3
+# - watchdog uses FSEvents API (native macOS file monitoring)
+# - SSH keys at ~/.ssh/ (same as Linux)
+# - For auto-start on login, use launchd (see docs/CROSS_PLATFORM_SUPPORT.md)
+# - Can watch any folder, e.g., ~/Downloads or ~/Documents/GCode
+# - Finder shows .gcode files with preview (QuickLook support)
