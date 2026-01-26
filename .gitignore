@@ -54,15 +54,11 @@ config.local
 deprecated/*.py
 deprecated/*.sh
 
-# Test scripts and test data
-run_tests.sh
-test_sync.sh
-tests/
+# Test output and data (not the scripts themselves)
+tests/__pycache__/
+tests/*.pyc
 
-# Development and diagnostic scripts
-check_gcode_monitor.sh
-deploy.sh
-uninstall_service.sh
+# Diagnostic scripts (kept local only)
 pi_scripts/diagnose_usb_gadget.sh
 
 # Development and Claude artifacts
