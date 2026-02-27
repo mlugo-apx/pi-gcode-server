@@ -1,4 +1,11 @@
 #!/bin/bash
+# ===========================================================================
+# DEPRECATED: This bash script is deprecated. Use monitor_and_sync.py instead.
+# The Python version provides better security controls, retry logic, and
+# file validation. This script is kept for reference only.
+# ===========================================================================
+
+echo "WARNING: monitor_and_sync.sh is DEPRECATED. Use monitor_and_sync.py instead." >&2
 
 # Determine script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

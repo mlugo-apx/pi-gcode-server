@@ -63,10 +63,10 @@ ProtectClock=true
 CapabilityBoundingSet=
 AmbientCapabilities=
 
-# System call filtering - relaxed for Python compatibility
-# SystemCallFilter=@system-service
-# SystemCallFilter=~@privileged @resources @obsolete
-# SystemCallArchitectures=native
+# System call filtering
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+SystemCallArchitectures=native
 
 # Logging
 StandardOutput=journal

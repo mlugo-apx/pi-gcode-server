@@ -352,5 +352,109 @@ class TestShellScriptIntegration(unittest.TestCase):
                 self.assertTrue(os.path.isfile(script))
 
 
+class TestDeployScriptUsesInstallService(unittest.TestCase):
+    """Test that deploy.sh delegates to install_service.sh instead of raw cp"""
+
+    def test_deploy_does_not_raw_copy_service_file(self):
+        """deploy.sh must NOT contain cp of gcode-monitor.service to /etc/systemd/system/"""
+        import re
+        with open('deploy.sh', 'r') as f:
+            content = f.read()
+        raw_cp_pattern = re.compile(
+            r'^\s*cp\s+.*gcode-monitor\.service.*(/etc/systemd/system/|/etc/systemd/system)',
+            re.MULTILINE
+        )
+        match = raw_cp_pattern.search(content)
+        self.assertIsNone(match, "deploy.sh must not raw-copy the template service file")
+
+    def test_deploy_calls_install_service(self):
+        """deploy.sh must delegate to install_service.sh"""
+        with open('deploy.sh', 'r') as f:
+            content = f.read()
+        self.assertIn('install_service.sh', content)
+
+    def test_deploy_step_numbering_consistent(self):
+        """deploy.sh step numbering should be sequential [1/5] through [5/5]"""
+        import re
+        with open('deploy.sh', 'r') as f:
+            content = f.read()
+        steps = re.findall(r'\[(\d+/\d+)\]', content)
+        self.assertTrue(len(steps) >= 5, f"Expected at least 5 steps, got {len(steps)}")
+        for i, step in enumerate(steps, 1):
+            self.assertEqual(step, f"{i}/5", f"Step {i} should be [{i}/5], got [{step}]")
+
+
+class TestHealthCheckAlerting(unittest.TestCase):
+    """Test that check_gcode_monitor.sh sends alerts on failure"""
+
+    def test_health_check_has_send_alert_function(self):
+        """check_gcode_monitor.sh must define a send_alert function"""
+        with open('check_gcode_monitor.sh', 'r') as f:
+            content = f.read()
+        self.assertIn('send_alert', content)
+
+    def test_health_check_uses_notify_send(self):
+        """check_gcode_monitor.sh must use notify-send for desktop alerts"""
+        with open('check_gcode_monitor.sh', 'r') as f:
+            content = f.read()
+        self.assertIn('notify-send', content)
+
+    def test_health_check_alerts_on_service_down(self):
+        """send_alert must be called in check_service_status error path"""
+        with open('check_gcode_monitor.sh', 'r') as f:
+            content = f.read()
+        lines = content.split('\n')
+        in_func = False
+        found = False
+        for line in lines:
+            if 'check_service_status()' in line:
+                in_func = True
+            if in_func and 'send_alert' in line:
+                found = True
+                break
+            if in_func and line.strip() == '}':
+                in_func = False
+        self.assertTrue(found, "send_alert must be called in check_service_status error path")
+
+    def test_health_check_alerts_on_errors(self):
+        """send_alert must be called in check_recent_errors error path"""
+        with open('check_gcode_monitor.sh', 'r') as f:
+            content = f.read()
+        lines = content.split('\n')
+        in_func = False
+        found = False
+        for line in lines:
+            if 'check_recent_errors()' in line:
+                in_func = True
+            if in_func and 'send_alert' in line:
+                found = True
+                break
+            if in_func and line.strip() == '}':
+                in_func = False
+        self.assertTrue(found, "send_alert must be called in check_recent_errors error path")
+
+
+class TestInstallAndStartUsesInstallService(unittest.TestCase):
+    """Test that install_and_start.sh delegates to install_service.sh"""
+
+    def test_install_and_start_does_not_raw_copy_service_file(self):
+        """install_and_start.sh must NOT contain cp of gcode-monitor.service to /etc/systemd/system/"""
+        import re
+        with open('install_and_start.sh', 'r') as f:
+            content = f.read()
+        raw_cp_pattern = re.compile(
+            r'^\s*(sudo\s+)?cp\s+.*gcode-monitor\.service.*(/etc/systemd/system/|/etc/systemd/system)',
+            re.MULTILINE
+        )
+        match = raw_cp_pattern.search(content)
+        self.assertIsNone(match, "install_and_start.sh must not raw-copy the template service file")
+
+    def test_install_and_start_calls_install_service(self):
+        """install_and_start.sh must delegate to install_service.sh"""
+        with open('install_and_start.sh', 'r') as f:
+            content = f.read()
+        self.assertIn('install_service.sh', content)
+
+
 if __name__ == '__main__':
     unittest.main()

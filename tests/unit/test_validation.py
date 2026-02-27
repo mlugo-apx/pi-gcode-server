@@ -249,7 +249,7 @@ class TestHandlerDeadlock(unittest.TestCase):
         """on_created should return promptly without holding the lock"""
         # Import here to ensure configuration is loaded as in production
         sys.modules.pop("monitor_and_sync", None)
-        with patch("logging.FileHandler", return_value=logging.NullHandler()):
+        with patch("logging.handlers.RotatingFileHandler", return_value=logging.NullHandler()):
             monitor_and_sync = importlib.import_module("monitor_and_sync")
 
         handler = monitor_and_sync.GCodeHandler()
@@ -269,15 +269,17 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
     """Ensure rsync destination is safely quoted for remote paths."""
 
     def setUp(self):
-        self.filehandler_patch = patch("logging.FileHandler", return_value=logging.NullHandler())
+        self.filehandler_patch = patch("logging.handlers.RotatingFileHandler", return_value=logging.NullHandler())
         self.filehandler_patch.start()
         self.addCleanup(self.filehandler_patch.stop)
 
         self.module = importlib.import_module("monitor_and_sync")
         self.temp_dir = tempfile.mkdtemp()
         self.original_watch_dir = self.module.WATCH_DIR
+        self.original_watch_dirs = self.module.WATCH_DIRS
         self.original_remote_path = self.module.REMOTE_PATH
         self.module.WATCH_DIR = self.temp_dir
+        self.module.WATCH_DIRS = [self.temp_dir]
         self.stats_output = textwrap.dedent("""
             Number of files: 1 (reg: 1)
             Number of created files: 1 (reg: 1)
@@ -296,6 +298,7 @@ class TestRsyncDestinationQuoting(unittest.TestCase):
 
     def tearDown(self):
         self.module.WATCH_DIR = self.original_watch_dir
+        self.module.WATCH_DIRS = self.original_watch_dirs
         self.module.REMOTE_PATH = self.original_remote_path
         if self.file_path.exists():
             self.file_path.unlink()
@@ -386,12 +389,127 @@ class TestLoggingSetup(unittest.TestCase):
                 self.assertTrue(Path(path).parent.exists(), "Log directory should exist before FileHandler initialization")
                 return logging.NullHandler()
 
-            with patch("logging.FileHandler", side_effect=fake_filehandler):
+            with patch("logging.handlers.RotatingFileHandler", side_effect=fake_filehandler):
                 importlib.import_module("monitor_and_sync")
         finally:
             config_path.write_text(original_config, encoding="utf-8")
             sys.modules.pop("monitor_and_sync", None)
             shutil.rmtree(temp_root.parent, ignore_errors=True)
+
+
+class TestCodeQuality(unittest.TestCase):
+    """Test code quality standards in monitor_and_sync.py"""
+
+    def test_no_duplicate_import_re(self):
+        """import re should appear exactly once"""
+        with open('monitor_and_sync.py', 'r') as f:
+            lines = f.readlines()
+        import_re_lines = [l for l in lines if l.strip() == 'import re']
+        self.assertEqual(len(import_re_lines), 1,
+                         f"Expected 1 'import re', found {len(import_re_lines)}")
+
+    def test_no_duplicate_from_pathlib_import_path(self):
+        """from pathlib import Path should appear exactly once"""
+        with open('monitor_and_sync.py', 'r') as f:
+            lines = f.readlines()
+        pathlib_lines = [l for l in lines if l.strip() == 'from pathlib import Path']
+        self.assertEqual(len(pathlib_lines), 1,
+                         f"Expected 1 'from pathlib import Path', found {len(pathlib_lines)}")
+
+    def test_send_notification_function_exists(self):
+        """monitor_and_sync.py must have send_notification function"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        self.assertIn('def send_notification', content)
+
+    def test_disk_space_check_exists(self):
+        """monitor_and_sync.py must have check_remote_disk_space method"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        self.assertIn('check_remote_disk_space', content)
+
+    def test_log_rotation_configured(self):
+        """monitor_and_sync.py must use RotatingFileHandler for log rotation"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        self.assertIn('RotatingFileHandler', content)
+        self.assertIn('maxBytes', content)
+        self.assertIn('backupCount', content)
+
+    def test_send_notification_called_on_success(self):
+        """send_notification must be called after 'Successfully synced'"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        # After the "Successfully synced" log line, send_notification should appear
+        idx_synced = content.index('Successfully synced')
+        idx_notify = content.index('send_notification', idx_synced)
+        self.assertGreater(idx_notify, idx_synced)
+
+    def test_send_notification_called_multiple_times(self):
+        """send_notification must be called in both success and failure paths"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        count = content.count('send_notification(')
+        # At least 4: function def + success + 2 failure except blocks
+        self.assertGreaterEqual(count, 4,
+                                f"Expected send_notification called at least 4 times (def + success + failure paths), found {count}")
+
+    def test_delete_after_sync_in_config_example(self):
+        """config.example must document DELETE_AFTER_SYNC option"""
+        with open('config.example', 'r') as f:
+            content = f.read()
+        self.assertIn('DELETE_AFTER_SYNC', content)
+
+    def test_delete_after_sync_in_monitor(self):
+        """monitor_and_sync.py must read DELETE_AFTER_SYNC config with default"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        self.assertIn('DELETE_AFTER_SYNC', content)
+        # Must use config.get() with a default value (not config['DELETE_AFTER_SYNC'])
+        self.assertIn(".get('DELETE_AFTER_SYNC'", content)
+
+    def test_delete_after_sync_logic_exists(self):
+        """monitor_and_sync.py must have os.remove logic gated by DELETE_AFTER_SYNC"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        self.assertIn('DELETE_AFTER_SYNC', content)
+        self.assertIn('os.remove(', content)
+
+    def test_config_example_documents_multiple_dirs(self):
+        """config.example must document comma-separated WATCH_DIR support"""
+        with open('config.example', 'r') as f:
+            content = f.read()
+        # Must mention comma-separated directories
+        self.assertTrue('comma' in content.lower() or 'multiple' in content.lower(),
+                        "config.example must document comma-separated directory support")
+
+    def test_watch_dir_split_in_monitor(self):
+        """monitor_and_sync.py must split WATCH_DIR for multiple directory support"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        # Must call .split(',') or .split(', ') on WATCH_DIR value
+        self.assertIn(".split(',')", content,
+                       "monitor_and_sync.py must split WATCH_DIR by comma for multi-dir support")
+
+    def test_observer_scheduled_in_loop(self):
+        """observer.schedule must be called in a loop over watch directories"""
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        # Must have a loop scheduling observers for each WATCH_DIR
+        self.assertIn('for watch_dir in WATCH_DIRS', content)
+        self.assertIn('observer.schedule(event_handler, watch_dir', content)
+
+    def test_no_fstrings_in_logging_calls(self):
+        """Logging calls must use lazy %s formatting, not f-strings"""
+        import re
+        with open('monitor_and_sync.py', 'r') as f:
+            content = f.read()
+        fstring_log_pattern = re.compile(
+            r'logging\.(debug|info|warning|error|critical)\(f["\']'
+        )
+        matches = fstring_log_pattern.findall(content)
+        self.assertEqual(len(matches), 0,
+                         f"Found {len(matches)} f-string logging calls; use %s lazy formatting instead")
 
 
 if __name__ == '__main__':

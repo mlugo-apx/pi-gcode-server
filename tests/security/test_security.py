@@ -268,7 +268,7 @@ class TestSystemdSandboxing(unittest.TestCase):
         self.assertIn('RestrictAddressFamilies=AF_INET AF_INET6', content)
         self.assertIn('IPAddressDeny=any', content)
         self.assertIn('IPAddressAllow=localhost', content)
-        self.assertIn('IPAddressAllow=192.168.1.0/24', content)
+        self.assertIn('IPAddressAllow=%LOCAL_SUBNET%', content)
 
     def test_filesystem_restrictions(self):
         """Test that filesystem access is restricted"""
@@ -298,6 +298,24 @@ class TestSystemdSandboxing(unittest.TestCase):
         # Verify syscall filtering
         self.assertIn('SystemCallFilter=@system-service', content)
         self.assertIn('SystemCallFilter=~@privileged', content)
+
+    def test_syscall_filter_uncommented(self):
+        """SystemCallFilter lines must be uncommented (active)"""
+        with open('gcode-monitor.service', 'r') as f:
+            lines = f.readlines()
+        uncommented_scf = [l for l in lines
+                           if l.strip().startswith('SystemCallFilter=')]
+        self.assertTrue(len(uncommented_scf) >= 2,
+                        "Expected at least 2 uncommented SystemCallFilter= lines")
+
+    def test_syscall_architectures_uncommented(self):
+        """SystemCallArchitectures=native must be uncommented"""
+        with open('gcode-monitor.service', 'r') as f:
+            lines = f.readlines()
+        uncommented = [l for l in lines
+                       if l.strip().startswith('SystemCallArchitectures=native')]
+        self.assertEqual(len(uncommented), 1,
+                         "Expected 1 uncommented SystemCallArchitectures=native line")
 
 
 class TestInputValidation(unittest.TestCase):
@@ -332,6 +350,22 @@ class TestInputValidation(unittest.TestCase):
 
         self.assertFalse(Path(relative_path).is_absolute())
         self.assertTrue(Path(absolute_path).is_absolute())
+
+
+class TestBashScriptDeprecation(unittest.TestCase):
+    """Test that monitor_and_sync.sh is deprecated"""
+
+    def test_bash_script_has_deprecation_notice(self):
+        """monitor_and_sync.sh must contain DEPRECATED notice"""
+        with open('monitor_and_sync.sh', 'r') as f:
+            content = f.read()
+        self.assertIn('DEPRECATED', content.upper())
+
+    def test_bash_script_references_python_version(self):
+        """monitor_and_sync.sh must reference monitor_and_sync.py"""
+        with open('monitor_and_sync.sh', 'r') as f:
+            content = f.read()
+        self.assertIn('monitor_and_sync.py', content)
 
 
 if __name__ == '__main__':

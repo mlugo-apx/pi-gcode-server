@@ -3,7 +3,7 @@
 # Note: config.local is git-ignored for security
 
 # Local machine settings
-WATCH_DIR="$HOME/Desktop"          # Directory to monitor for .gcode files
+WATCH_DIR="$HOME/Desktop"          # Directory to monitor for .gcode files (comma-separated for multiple dirs)
 LOG_FILE="$HOME/.gcode_sync.log"   # Log file location
 
 # Raspberry Pi connection settings
@@ -11,6 +11,9 @@ REMOTE_USER="your_pi_username"      # SSH username on your Raspberry Pi
 REMOTE_HOST="192.168.1.100"         # IP address or hostname of your Raspberry Pi
 REMOTE_PORT="22"                    # SSH port (default: 22)
 REMOTE_PATH="/mnt/usb_share"        # Path to USB gadget mount point on Pi
+
+# Optional settings
+DELETE_AFTER_SYNC="false"           # Delete local file after successful sync (true/false)
 
 # Example configurations:
 # Direct connection:      REMOTE_HOST="192.168.1.6" REMOTE_PORT="22"

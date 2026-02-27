@@ -18,11 +18,23 @@ print_header() {
     echo "[$(timestamp)] $1"
 }
 
+send_alert() {
+    local title="$1"
+    local body="$2"
+    local urgency="${3:-critical}"
+    # Desktop notification (works if DISPLAY/DBUS available)
+    if command -v notify-send &>/dev/null; then
+        notify-send --urgency="$urgency" "$title" "$body" 2>/dev/null || true
+    fi
+    print_header "ALERT: $title - $body"
+}
+
 check_service_status() {
     if systemctl is-active --quiet "${SERVICE_NAME}"; then
         print_header "Service ${SERVICE_NAME} is active."
     else
         print_header "ERROR: Service ${SERVICE_NAME} is not active."
+        send_alert "GCode Monitor Down" "Service ${SERVICE_NAME} is not active"
         systemctl status "${SERVICE_NAME}" --no-pager
         exit 1
     fi
@@ -52,6 +64,7 @@ check_recent_errors() {
     print_header "Scanning journal for recent errors..."
     if journalctl -u "${SERVICE_NAME}" --since "30 minutes ago" | grep -qi "error"; then
         print_header "ERROR: Recent errors detected in journal."
+        send_alert "GCode Monitor Errors" "Recent errors detected in journal for ${SERVICE_NAME}"
         journalctl -u "${SERVICE_NAME}" --since "30 minutes ago"
         exit 1
     else
