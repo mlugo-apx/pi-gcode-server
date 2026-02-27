@@ -19,11 +19,11 @@ if [ "$EUID" -ne 0 ]; then
     exec sudo bash "$0" "$@"
 fi
 
-# Step 1: Copy updated service file
-echo -e "${YELLOW}[1/4] Copying updated service file...${NC}"
+# Step 1: Install service file via install_service.sh (template substitution)
+echo -e "${YELLOW}[1/5] Installing service file...${NC}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cp "${SCRIPT_DIR}/gcode-monitor.service" /etc/systemd/system/
-echo -e "${GREEN}✓ Service file updated${NC}"
+bash "${SCRIPT_DIR}/install_service.sh"
+echo -e "${GREEN}✓ Service file installed${NC}"
 echo ""
 
 # Step 2: Reload systemd configuration

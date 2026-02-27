@@ -78,10 +78,7 @@ read -p "Install as systemd service (auto-start on boot)? [Y/n]: " install_servi
 
 if [[ ! "$install_service" =~ ^[Nn]$ ]]; then
     echo "Installing systemd service..."
-    sudo cp "$SCRIPT_DIR/gcode-monitor.service" /etc/systemd/system/
-    sudo systemctl daemon-reload
-    sudo systemctl enable gcode-monitor.service
-    sudo systemctl start gcode-monitor.service
+    sudo bash "$SCRIPT_DIR/install_service.sh"
 
     echo -e "${GREEN}✓ Service installed and started${NC}"
     echo
