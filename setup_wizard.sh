@@ -49,7 +49,7 @@ prompt_with_default() {
     local var_name="$3"
     local value
 
-    read -p "$prompt [$default]: " value
+    read -rp "$prompt [$default]: " value
     value="${value:-$default}"
     printf -v "$var_name" '%s' "$value"
 }

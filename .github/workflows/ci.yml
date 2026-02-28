@@ -131,9 +131,14 @@ jobs:
       - name: Create test config
         run: |
           mkdir -p "$HOME/Desktop"
-          cp config.example config.local
-          sed -i 's|your_pi_username|testuser|' config.local
-          sed -i "s|\$HOME|$HOME|g" config.local
+          cat > config.local << CONF
+          WATCH_DIR="$HOME/Desktop"
+          LOG_FILE="$HOME/.gcode_sync.log"
+          REMOTE_USER="testuser"
+          REMOTE_HOST="192.168.1.100"
+          REMOTE_PORT="22"
+          REMOTE_PATH="/mnt/usb_share"
+          CONF
 
       - name: Run unit tests
         run: |
