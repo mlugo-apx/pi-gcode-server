@@ -46,14 +46,14 @@ jobs:
 
       - name: Lint bash scripts
         run: |
-          # Fail build on shellcheck errors (warnings allowed)
-          shellcheck monitor_and_sync.sh
-          shellcheck install_service.sh
-          shellcheck setup_wizard.sh
-          shellcheck lib/error_handler.sh
-          shellcheck pi_scripts/refresh_usb_gadget.sh
-          shellcheck pi_scripts/refresh_usb_gadget_configfs.sh
-          shellcheck pi_scripts/refresh_usb_gadget_module.sh
+          # Fail build on shellcheck errors only (warnings and info allowed)
+          shellcheck -S error monitor_and_sync.sh
+          shellcheck -S error install_service.sh
+          shellcheck -S error setup_wizard.sh
+          shellcheck -S error lib/error_handler.sh
+          shellcheck -S error pi_scripts/refresh_usb_gadget.sh
+          shellcheck -S error pi_scripts/refresh_usb_gadget_configfs.sh
+          shellcheck -S error pi_scripts/refresh_usb_gadget_module.sh
           echo "✓ All shell scripts passed shellcheck"
 
   test-installation:
