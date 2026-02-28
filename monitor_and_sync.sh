@@ -37,7 +37,10 @@ parse_config() {
         value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
         # Remove quotes from value
-        value=$(echo "$value" | sed 's/^["'\'']\(.*\)["'\'']$/\1/')
+        value="${value#\"}"
+        value="${value%\"}"
+        value="${value#\'}"
+        value="${value%\'}"
 
         # Export the variable
         export "$key=$value"
