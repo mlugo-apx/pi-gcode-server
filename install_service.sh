@@ -9,6 +9,7 @@ CONFIG_FILE="$SCRIPT_DIR/config.local"
 
 # Load configuration to get WATCH_DIR
 if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
     source "$CONFIG_FILE"
 else
     echo "ERROR: config.local not found. Please run setup_wizard.sh first."

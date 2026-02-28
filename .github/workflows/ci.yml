@@ -128,6 +128,13 @@ jobs:
           pip install -r requirements.txt --require-hashes
           pip install pytest pytest-cov
 
+      - name: Create test config
+        run: |
+          mkdir -p "$HOME/Desktop"
+          cp config.example config.local
+          sed -i 's|your_pi_username|testuser|' config.local
+          sed -i "s|\$HOME|$HOME|g" config.local
+
       - name: Run unit tests
         run: |
           pytest tests/unit -v --tb=short
