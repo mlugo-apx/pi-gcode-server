@@ -458,3 +458,76 @@ class TestInstallAndStartUsesInstallService(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestPiSetupConfiguresBoot(unittest.TestCase):
+    """Test that pi_setup_auto.sh configures USB gadget boot settings"""
+
+    def setUp(self):
+        with open('pi_scripts/pi_setup_auto.sh', 'r') as f:
+            self.content = f.read()
+
+    def test_has_configure_config_txt_function(self):
+        """pi_setup_auto.sh must have a configure_config_txt function"""
+        self.assertIn('configure_config_txt', self.content)
+
+    def test_removes_otg_mode_host(self):
+        """pi_setup_auto.sh must remove otg_mode=1 which forces host mode"""
+        self.assertIn('otg_mode=1', self.content)
+        # Must be in a removal context (sed -i delete or similar)
+        self.assertRegex(self.content, r"sed.*otg_mode.*d|remove.*otg_mode")
+
+    def test_adds_dwc2_peripheral_overlay(self):
+        """pi_setup_auto.sh must add dtoverlay=dwc2,dr_mode=peripheral"""
+        self.assertIn('dtoverlay=dwc2,dr_mode=peripheral', self.content)
+
+    def test_places_overlay_under_all_section(self):
+        """dtoverlay=dwc2 must be placed under [all] section in config.txt"""
+        self.assertRegex(self.content, r'\[all\]')
+        # Must reference [all] section when adding the overlay
+        self.assertIn('[all]', self.content)
+
+    def test_configures_kernel_modules(self):
+        """pi_setup_auto.sh must ensure dwc2 and g_mass_storage are in /etc/modules"""
+        self.assertIn('/etc/modules', self.content)
+        self.assertIn('dwc2', self.content)
+        self.assertIn('g_mass_storage', self.content)
+
+    def test_creates_modprobe_conf(self):
+        """pi_setup_auto.sh must create /etc/modprobe.d/g_mass_storage.conf"""
+        self.assertIn('/etc/modprobe.d/g_mass_storage.conf', self.content)
+        self.assertIn('file=/piusb.bin', self.content)
+
+    def test_configures_usb_disk_image(self):
+        """pi_setup_auto.sh must create /piusb.bin and configure fstab"""
+        self.assertIn('/piusb.bin', self.content)
+        self.assertIn('/etc/fstab', self.content)
+        self.assertIn('uid=', self.content)
+        self.assertIn('gid=', self.content)
+
+    def test_configure_boot_called_in_main(self):
+        """configure_usb_gadget_boot must be called in the main setup flow"""
+        # Find the main function and check it calls configure_usb_gadget_boot
+        self.assertIn('configure_usb_gadget_boot', self.content)
+
+
+class TestRefreshScriptModuleMethod(unittest.TestCase):
+    """Test that refresh_usb_gadget_module.sh uses modprobe.d conf"""
+
+    def setUp(self):
+        with open('pi_scripts/refresh_usb_gadget_module.sh', 'r') as f:
+            self.content = f.read()
+
+    def test_does_not_pass_ro_parameter(self):
+        """refresh_usb_gadget_module.sh must not pass ro= to modprobe (sysfs returns N not 0/1)"""
+        import re
+        # The modprobe reinsertion line must NOT have ro= parameter
+        reinsert_lines = [l for l in self.content.split('\n')
+                          if 'modprobe g_mass_storage' in l and 'modprobe -r' not in l]
+        for line in reinsert_lines:
+            self.assertNotIn('ro=', line,
+                             "modprobe must not pass ro= (sysfs returns N/Y, modprobe expects 0/1)")
+
+    def test_relies_on_modprobe_conf(self):
+        """refresh_usb_gadget_module.sh must reference modprobe.d conf for parameters"""
+        self.assertIn('modprobe.d', self.content)

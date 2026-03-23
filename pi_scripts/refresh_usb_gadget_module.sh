@@ -36,14 +36,9 @@ log "Removing g_mass_storage module..."
 modprobe -r g_mass_storage
 sleep 2
 
-# Re-insert the module with same parameters
+# Re-insert the module (parameters loaded from /etc/modprobe.d/g_mass_storage.conf)
 log "Re-inserting g_mass_storage module..."
-if [ -n "$MODULE_PARAMS" ]; then
-    modprobe g_mass_storage file="$MODULE_PARAMS" ro="$RO_PARAM" removable=1 stall=0
-else
-    log "ERROR: Could not determine module parameters"
-    exit 1
-fi
+modprobe g_mass_storage
 
 sleep 2
 

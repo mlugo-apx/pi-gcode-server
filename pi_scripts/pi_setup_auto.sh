@@ -275,6 +275,180 @@ check_prerequisites() {
 }
 
 #==============================================================================
+# Boot Configuration Functions
+#==============================================================================
+
+configure_usb_gadget_boot() {
+    log INFO "Configuring USB gadget boot settings..."
+
+    configure_config_txt
+    configure_kernel_modules
+    configure_usb_disk_image
+}
+
+configure_config_txt() {
+    log INFO "Checking /boot/firmware/config.txt for USB gadget settings..."
+
+    local config_file="/boot/firmware/config.txt"
+    if [ ! -f "$config_file" ]; then
+        config_file="/boot/config.txt"
+    fi
+
+    if [ ! -f "$config_file" ]; then
+        log ERROR "Cannot find config.txt"
+        return 1
+    fi
+
+    backup_file "$config_file"
+
+    # Remove otg_mode=1 if present (forces host mode, prevents gadget mode)
+    if grep -q "^otg_mode=1" "$config_file"; then
+        log WARNING "Found otg_mode=1 (forces host mode) — removing"
+        if [ "$DRY_RUN" = false ]; then
+            sed -i '/^otg_mode=1/d' "$config_file"
+        else
+            log INFO "[DRY-RUN] Would remove otg_mode=1"
+        fi
+    fi
+
+    # Ensure dtoverlay=dwc2,dr_mode=peripheral is under [all] section
+    if grep -q "dtoverlay=dwc2,dr_mode=peripheral" "$config_file"; then
+        log SUCCESS "dtoverlay=dwc2,dr_mode=peripheral already configured"
+    elif grep -q "dtoverlay=dwc2" "$config_file"; then
+        # dwc2 exists but without dr_mode=peripheral — fix it
+        log WARNING "Found dtoverlay=dwc2 without dr_mode=peripheral — updating"
+        if [ "$DRY_RUN" = false ]; then
+            sed -i '/^dtoverlay=dwc2/d' "$config_file"
+            if grep -q "^\[all\]" "$config_file"; then
+                sed -i '/^\[all\]/a dtoverlay=dwc2,dr_mode=peripheral' "$config_file"
+            else
+                echo -e "\n[all]\ndtoverlay=dwc2,dr_mode=peripheral" >> "$config_file"
+            fi
+        else
+            log INFO "[DRY-RUN] Would update dtoverlay=dwc2 to dtoverlay=dwc2,dr_mode=peripheral under [all]"
+        fi
+        log SUCCESS "Updated dwc2 overlay to peripheral mode"
+    else
+        # No dwc2 overlay at all — add it
+        log INFO "Adding dtoverlay=dwc2,dr_mode=peripheral"
+        if [ "$DRY_RUN" = false ]; then
+            if grep -q "^\[all\]" "$config_file"; then
+                sed -i '/^\[all\]/a dtoverlay=dwc2,dr_mode=peripheral' "$config_file"
+            else
+                echo -e "\n[all]\ndtoverlay=dwc2,dr_mode=peripheral" >> "$config_file"
+            fi
+        else
+            log INFO "[DRY-RUN] Would add dtoverlay=dwc2,dr_mode=peripheral under [all]"
+        fi
+        log SUCCESS "Added dwc2 overlay in peripheral mode"
+    fi
+
+    return 0
+}
+
+configure_kernel_modules() {
+    log INFO "Checking kernel module configuration..."
+
+    # Ensure dwc2 is in /etc/modules
+    if grep -q "^dwc2" /etc/modules; then
+        log SUCCESS "dwc2 already in /etc/modules"
+    else
+        log INFO "Adding dwc2 to /etc/modules"
+        if [ "$DRY_RUN" = false ]; then
+            echo "dwc2" >> /etc/modules
+        else
+            log INFO "[DRY-RUN] Would add dwc2 to /etc/modules"
+        fi
+    fi
+
+    # Ensure g_mass_storage is in /etc/modules
+    if grep -q "^g_mass_storage" /etc/modules; then
+        log SUCCESS "g_mass_storage already in /etc/modules"
+    else
+        log INFO "Adding g_mass_storage to /etc/modules"
+        if [ "$DRY_RUN" = false ]; then
+            echo "g_mass_storage" >> /etc/modules
+        else
+            log INFO "[DRY-RUN] Would add g_mass_storage to /etc/modules"
+        fi
+    fi
+
+    # Create modprobe.d config for g_mass_storage options
+    local modprobe_conf="/etc/modprobe.d/g_mass_storage.conf"
+    if [ -f "$modprobe_conf" ]; then
+        log SUCCESS "Module options already configured in $modprobe_conf"
+    else
+        log INFO "Creating $modprobe_conf with options: file=/piusb.bin stall=0 removable=1"
+        if [ "$DRY_RUN" = false ]; then
+            echo "options g_mass_storage file=/piusb.bin stall=0 removable=1" > "$modprobe_conf"
+        else
+            log INFO "[DRY-RUN] Would create $modprobe_conf"
+        fi
+        log SUCCESS "Module options configured"
+    fi
+
+    return 0
+}
+
+configure_usb_disk_image() {
+    log INFO "Checking USB disk image..."
+
+    # Create /piusb.bin if it doesn't exist
+    if [ -f "/piusb.bin" ]; then
+        log SUCCESS "/piusb.bin already exists ($(du -h /piusb.bin | cut -f1))"
+    else
+        log INFO "Creating 2GB USB disk image at /piusb.bin..."
+        if [ "$DRY_RUN" = false ]; then
+            dd if=/dev/zero of=/piusb.bin bs=1M count=2048 status=progress
+            mkfs.vfat /piusb.bin
+            log SUCCESS "Created and formatted /piusb.bin"
+        else
+            log INFO "[DRY-RUN] Would create 2GB /piusb.bin"
+        fi
+    fi
+
+    # Create mount point
+    if [ ! -d "/mnt/usb_share" ]; then
+        if [ "$DRY_RUN" = false ]; then
+            mkdir -p /mnt/usb_share
+        fi
+    fi
+
+    # Get the uid/gid of the service user
+    local svc_uid svc_gid
+    svc_uid=$(id -u "$CURRENT_USER" 2>/dev/null || echo "1000")
+    svc_gid=$(id -g "$CURRENT_USER" 2>/dev/null || echo "1000")
+
+    # Add fstab entry if missing
+    if grep -q "/piusb.bin" /etc/fstab; then
+        log SUCCESS "/piusb.bin already in /etc/fstab"
+    else
+        local fstab_entry="/piusb.bin  /mnt/usb_share  vfat  loop,rw,users,umask=000,uid=${svc_uid},gid=${svc_gid}  0  0"
+        log INFO "Adding fstab entry: $fstab_entry"
+        if [ "$DRY_RUN" = false ]; then
+            echo "$fstab_entry" >> /etc/fstab
+        else
+            log INFO "[DRY-RUN] Would add to /etc/fstab"
+        fi
+    fi
+
+    # Mount if not already mounted
+    if mount | grep -q "/mnt/usb_share"; then
+        log SUCCESS "/piusb.bin is mounted"
+    else
+        log INFO "Mounting /piusb.bin..."
+        if [ "$DRY_RUN" = false ]; then
+            mount /mnt/usb_share
+            log SUCCESS "Mounted /piusb.bin at /mnt/usb_share"
+        else
+            log INFO "[DRY-RUN] Would mount /mnt/usb_share"
+        fi
+    fi
+
+    return 0
+}
+
+#==============================================================================
 # Installation Functions
 #==============================================================================
 
@@ -785,6 +959,7 @@ main() {
     log INFO "Phase 2: Installing scripts and configurations..."
     log ""
 
+    configure_usb_gadget_boot || true  # Non-critical, show warnings
     install_refresh_script || exit 1
     install_diagnose_script || true  # Non-critical
     configure_sudoers || exit 1
