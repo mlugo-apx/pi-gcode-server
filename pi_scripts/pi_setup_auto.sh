@@ -518,6 +518,69 @@ install_diagnose_script() {
     return 0
 }
 
+install_cleanup_script() {
+    log INFO "Installing GCode cleanup script..."
+
+    local source_script="$SCRIPT_DIR/cleanup_old_gcode.sh"
+    local target_script="/usr/local/bin/cleanup_old_gcode.sh"
+
+    if [ ! -f "$source_script" ]; then
+        log WARNING "Cleanup script not found: $source_script"
+        return 1
+    fi
+
+    backup_file "$target_script"
+    run_command "cp '$source_script' '$target_script'"
+    run_command "chmod +x '$target_script'"
+
+    log SUCCESS "Installed cleanup script"
+    return 0
+}
+
+install_resize_script() {
+    log INFO "Installing USB image resize script..."
+
+    local source_script="$SCRIPT_DIR/resize_usb_image.sh"
+    local target_script="/usr/local/bin/resize_usb_image.sh"
+
+    if [ ! -f "$source_script" ]; then
+        log WARNING "Resize script not found: $source_script"
+        return 1
+    fi
+
+    backup_file "$target_script"
+    run_command "cp '$source_script' '$target_script'"
+    run_command "chmod +x '$target_script'"
+
+    log SUCCESS "Installed resize script"
+    return 0
+}
+
+configure_cleanup_cron() {
+    log INFO "Configuring automatic GCode cleanup cron job..."
+
+    local cron_entry="0 3 * * * /usr/local/bin/cleanup_old_gcode.sh >> /var/log/gcode_cleanup.log 2>&1"
+
+    # Check if cron entry already exists
+    if crontab -l 2>/dev/null | grep -q "cleanup_old_gcode.sh"; then
+        log SUCCESS "Cleanup cron job already configured"
+        return 0
+    fi
+
+    if [ "$DRY_RUN" = true ]; then
+        log INFO "[DRY-RUN] Would add cron entry: $cron_entry"
+        return 0
+    fi
+
+    # Add to root's crontab (script needs sudo for USB gadget refresh)
+    (crontab -l 2>/dev/null; echo "$cron_entry") | crontab -
+    log SUCCESS "Cron job installed: daily at 3 AM, deletes .gcode files older than 14 days"
+    log INFO "To change the age threshold, edit the cron entry and add a number argument"
+    log INFO "  Example: cleanup_old_gcode.sh 7   (delete files older than 7 days)"
+
+    return 0
+}
+
 configure_sudoers() {
     log INFO "Configuring passwordless sudo for refresh script..."
 
@@ -813,7 +876,10 @@ generate_report() {
     log "Installed Components:"
     log "  ✓ /usr/local/bin/refresh_usb_gadget.sh"
     log "  ✓ /usr/local/bin/diagnose_usb_gadget.sh"
+    log "  ✓ /usr/local/bin/cleanup_old_gcode.sh"
+    log "  ✓ /usr/local/bin/resize_usb_image.sh"
     log "  ✓ /etc/sudoers.d/usb-gadget-refresh"
+    log "  ✓ Cron: daily cleanup of .gcode files older than 14 days"
     log ""
 
     log "Next Steps:"
@@ -830,7 +896,10 @@ generate_report() {
     log "4. Run diagnostic to see full configuration:"
     log "   sudo /usr/local/bin/diagnose_usb_gadget.sh"
     log ""
-    log "5. Configure desktop monitor (see docs/QUICKSTART.md):"
+    log "5. Resize USB image if needed (default grows to 4 GB):"
+    log "   sudo /usr/local/bin/resize_usb_image.sh 4096"
+    log ""
+    log "6. Configure desktop monitor (see docs/QUICKSTART.md):"
     log "   - Update .env file with Pi's IP address"
     log "   - Run: python3 monitor.py"
     log ""
@@ -962,7 +1031,10 @@ main() {
     configure_usb_gadget_boot || true  # Non-critical, show warnings
     install_refresh_script || exit 1
     install_diagnose_script || true  # Non-critical
+    install_cleanup_script || true  # Non-critical
+    install_resize_script || true  # Non-critical
     configure_sudoers || exit 1
+    configure_cleanup_cron || true  # Non-critical
     fix_wifi_power_management || true  # Non-critical
 
     log ""
