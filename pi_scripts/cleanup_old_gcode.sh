@@ -70,20 +70,28 @@ if ! mount | grep -q "$MOUNT_POINT"; then
     exit 1
 fi
 
-# Find old .gcode files
-OLD_FILES=$(find "$MOUNT_POINT" -maxdepth 1 -name "*.gcode" -type f -mtime +"$MAX_AGE_DAYS" 2>/dev/null || true)
+# Find old .gcode files.
+# NULL-delimited (-print0 + mapfile -d '') so filenames containing spaces,
+# parentheses, etc. are handled correctly. The previous version piped the
+# list through `xargs du`, which split on whitespace and, under
+# `set -euo pipefail`, aborted the whole script before any file was deleted.
+mapfile -d '' -t OLD_FILES < <(find "$MOUNT_POINT" -maxdepth 1 -name "*.gcode" -type f -mtime +"$MAX_AGE_DAYS" -print0 2>/dev/null)
 
-if [ -z "$OLD_FILES" ]; then
+if [ "${#OLD_FILES[@]}" -eq 0 ]; then
     log "No .gcode files older than $MAX_AGE_DAYS days found. Nothing to do."
     exit 0
 fi
 
-FILE_COUNT=$(echo "$OLD_FILES" | wc -l)
-TOTAL_SIZE=$(echo "$OLD_FILES" | xargs du -ch 2>/dev/null | tail -1 | cut -f1)
+FILE_COUNT="${#OLD_FILES[@]}"
+TOTAL_BYTES=0
+for file in "${OLD_FILES[@]}"; do
+    TOTAL_BYTES=$(( TOTAL_BYTES + $(stat -c %s "$file" 2>/dev/null || echo 0) ))
+done
+TOTAL_SIZE="$(( TOTAL_BYTES / 1048576 )) MB"
 
 if [ "$DRY_RUN" = true ]; then
     log "[DRY-RUN] Would delete $FILE_COUNT file(s) ($TOTAL_SIZE) older than $MAX_AGE_DAYS days:"
-    echo "$OLD_FILES" | while read -r file; do
+    for file in "${OLD_FILES[@]}"; do
         AGE_DAYS=$(( ( $(date +%s) - $(stat -c %Y "$file") ) / 86400 ))
         log "  [DRY-RUN] $(basename "$file") (${AGE_DAYS} days old, $(du -h "$file" | cut -f1))"
     done
@@ -95,17 +103,21 @@ log "=== GCode Cleanup: deleting $FILE_COUNT file(s) ($TOTAL_SIZE) older than $M
 DELETED=0
 FAILED=0
 
-echo "$OLD_FILES" | while read -r file; do
+for file in "${OLD_FILES[@]}"; do
     BASENAME=$(basename "$file")
     AGE_DAYS=$(( ( $(date +%s) - $(stat -c %Y "$file") ) / 86400 ))
     FILE_SIZE=$(du -h "$file" | cut -f1)
 
     if rm "$file"; then
         log "  Deleted: $BASENAME (${AGE_DAYS} days old, $FILE_SIZE)"
+        DELETED=$(( DELETED + 1 ))
     else
         log "  FAILED to delete: $BASENAME"
+        FAILED=$(( FAILED + 1 ))
     fi
 done
+
+log "Deleted $DELETED file(s), $FAILED failure(s)"
 
 # Sync filesystem
 sync
